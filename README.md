@@ -44,7 +44,7 @@ go install github.com/yasinhessnawi1/glive/cmd/glive@latest
 #### Option 2: From Source (Full stack)
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/glive.git
+git clone https://github.com/yasinhessnawi1/glive.git
 cd glive
 
 # Build CLI
