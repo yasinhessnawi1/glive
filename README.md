@@ -38,19 +38,19 @@ GitHub is filled with amazing projects, but getting them to run locally is often
 #### Option 1: Using Go (CLI only)
 ```bash
 # Install Go from https://go.dev/dl/ if not already installed
-go install github.com/yasinhessnawi1/glive/cmd/glive@latest
+go install github.com/yasinhessnawi1/GLive/cmd/GLive@latest
 ```
 
 #### Option 2: From Source (Full stack)
 ```bash
 # Clone the repository
-git clone https://github.com/yasinhessnawi1/glive.git
-cd glive
+git clone https://github.com/yasinhessnawi1/GLive.git
+cd GLive
 
 # Build CLI
-cd cmd/glive
-go build -o glive
-sudo mv glive /usr/local/bin/  # or add to PATH
+cd cmd/GLive
+go build -o GLive
+sudo mv GLive /usr/local/bin/  # or add to PATH
 
 # Build and run agent (optional, for web dashboard)
 cd ../../pkg/agent
@@ -225,9 +225,9 @@ MIT License - see [LICENSE](./LICENSE) for details
 
 ## 📧 Support
 
-- 🐛 [Report a bug](https://github.com/yourusername/glive/issues)
-- 💡 [Request a feature](https://github.com/yourusername/glive/issues)
-- 💬 [Discussions](https://github.com/yourusername/glive/discussions)
+- 🐛 [Report a bug](https://github.com/yourusername/GLive/issues)
+- 💡 [Request a feature](https://github.com/yourusername/GLive/issues)
+- 💬 [Discussions](https://github.com/yourusername/GLive/discussions)
 
 ---
 
