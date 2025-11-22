@@ -1,0 +1,13 @@
+go 1.24
+
+toolchain go1.24.10
+
+use (
+	./cmd/glive
+	./pkg/agent
+	./pkg/core
+	./pkg/domain
+	./pkg/infrastructure
+	./pkg/interface
+	./pkg/usecase
+)

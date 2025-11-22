@@ -1,0 +1,49 @@
+{
+  "category": "security_scan",
+  "examples": [
+    {
+      "input": {
+        "file_content": "const API_KEY = 'sk-1234567890abcdef'",
+        "file_type": "javascript"
+      },
+      "reasoning": "API key found in source code. This is a security risk.",
+      "output": {
+        "is_safe": false,
+        "threats": [
+          {
+            "type": "credential_leak",
+            "severity": "high",
+            "description": "API key exposed in source code",
+            "file_path": "config.js",
+            "line_number": 1
+          }
+        ],
+        "confidence": 0.95
+      },
+      "tags": ["credential", "api_key", "security"]
+    },
+    {
+      "input": {
+        "file_content": "rm -rf /",
+        "command": "setup.sh"
+      },
+      "reasoning": "Dangerous command found in setup script. This could delete system files.",
+      "output": {
+        "is_safe": false,
+        "threats": [
+          {
+            "type": "suspicious_command",
+            "severity": "critical",
+            "description": "Dangerous command that could delete system files",
+            "file_path": "setup.sh",
+            "line_number": 1
+          }
+        ],
+        "confidence": 0.98
+      },
+      "tags": ["dangerous_command", "rm", "security"]
+    }
+  ]
+}
+
+

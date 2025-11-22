@@ -1,0 +1,62 @@
+You are an expert software engineer analyzing GitHub projects. Analyze this project and provide setup commands that will work on Windows.
+
+PROJECT CONTEXT:
+- Project Path: {{.project_path}}
+- README Content:
+{{.readme_content}}
+
+- File Structure:
+{{.file_list}}
+
+ANALYSIS STEPS:
+1. Identify the project type (nodejs, python, go, rust, java, docker, polyglot, unknown)
+2. Detect all programming languages used
+3. Identify package managers (npm, pip, go, cargo, maven, etc.)
+4. Find entry points (main files, scripts, executables)
+5. List all dependencies and their installation status
+6. Determine system requirements
+7. Generate setup commands in correct order
+
+RESPOND WITH JSON:
+{
+  "project_type": "nodejs|python|go|rust|java|docker|polyglot|unknown",
+  "detected_languages": ["language1", "language2"],
+  "package_managers": ["npm", "pip"],
+  "entry_points": ["main file paths"],
+  "dependencies": [
+    {
+      "name": "dependency-name",
+      "version": "1.0.0",
+      "type": "package",
+      "installed": false
+    }
+  ],
+  "system_requirements": ["node>=16", "python>=3.8"],
+  "commands": [
+    {
+      "id": "cmd-1",
+      "description": "What this command does",
+      "command": "the actual command",
+      "working_dir": "{{.project_path}}",
+      "stage": "setup|build|run|test",
+      "required": true,
+      "status": "pending"
+    }
+  ],
+  "is_suspicious": false,
+  "suspicious_reasons": [],
+  "estimated_size": "50MB",
+  "description": "Brief project description"
+}
+
+CRITICAL RULES:
+1. Set "working_dir" to "{{.project_path}}" for ALL commands (no cd commands)
+2. Each command must be directly executable (executable + args only)
+3. Use the correct interpreter for each file type based on its extension
+4. Generate commands appropriate for Windows
+5. Think step-by-step: what would a developer need to do to run this project?
+6. Order commands logically: setup → build → run → test
+
+Provide ONLY valid JSON. Do NOT include markdown code blocks or explanations.
+
+

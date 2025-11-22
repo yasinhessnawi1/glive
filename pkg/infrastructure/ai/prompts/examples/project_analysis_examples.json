@@ -1,0 +1,74 @@
+{
+  "category": "project_analysis",
+  "examples": [
+    {
+      "input": {
+        "project_type": "nodejs",
+        "has_package_json": true,
+        "has_node_modules": false,
+        "has_lock_file": true
+      },
+      "reasoning": "This is a Node.js project with package.json but missing node_modules. Need to install dependencies.",
+      "output": {
+        "project_type": "nodejs",
+        "package_managers": ["npm"],
+        "commands": [
+          {
+            "command": "npm install",
+            "stage": "setup",
+            "required": true
+          }
+        ]
+      },
+      "tags": ["nodejs", "npm", "missing_dependencies"]
+    },
+    {
+      "input": {
+        "project_type": "python",
+        "has_requirements_txt": true,
+        "has_venv": false,
+        "has_pyproject_toml": false
+      },
+      "reasoning": "Python project with requirements.txt. Should create virtual environment and install dependencies.",
+      "output": {
+        "project_type": "python",
+        "package_managers": ["pip"],
+        "commands": [
+          {
+            "command": "python -m venv venv",
+            "stage": "setup",
+            "required": true
+          },
+          {
+            "command": "venv\\Scripts\\activate && pip install -r requirements.txt",
+            "stage": "setup",
+            "required": true
+          }
+        ]
+      },
+      "tags": ["python", "pip", "venv"]
+    },
+    {
+      "input": {
+        "project_type": "go",
+        "has_go_mod": true,
+        "has_go_sum": false
+      },
+      "reasoning": "Go project with go.mod. Need to download dependencies.",
+      "output": {
+        "project_type": "go",
+        "package_managers": ["go"],
+        "commands": [
+          {
+            "command": "go mod download",
+            "stage": "setup",
+            "required": true
+          }
+        ]
+      },
+      "tags": ["go", "gomod"]
+    }
+  ]
+}
+
+

@@ -1,0 +1,81 @@
+{
+  "category": "error_recovery",
+  "examples": [
+    {
+      "input": {
+        "error_message": "Cannot find module 'express'",
+        "project_type": "nodejs",
+        "has_package_json": true,
+        "has_node_modules": false
+      },
+      "reasoning": "This is a missing dependency error. The module exists in package.json but isn't installed.",
+      "output": {
+        "error_type": "missing_dependency",
+        "root_cause": "Module 'express' is listed in package.json but not installed in node_modules",
+        "confidence": 0.95,
+        "recovery_steps": [
+          {
+            "command": "npm install",
+            "reason": "Install all dependencies from package.json",
+            "risk_level": "low",
+            "can_rollback": true,
+            "rollback_command": "rm -rf node_modules"
+          }
+        ],
+        "explanation": "The express module is missing. Running npm install will install it along with all other dependencies."
+      },
+      "tags": ["nodejs", "missing_dependency", "npm"]
+    },
+    {
+      "input": {
+        "error_message": "ModuleNotFoundError: No module named 'django'",
+        "project_type": "python",
+        "has_requirements_txt": true,
+        "venv_activated": true
+      },
+      "reasoning": "Missing Python package. Should install from requirements.txt in virtual environment.",
+      "output": {
+        "error_type": "missing_dependency",
+        "root_cause": "Django package is not installed in the current Python environment",
+        "confidence": 0.92,
+        "recovery_steps": [
+          {
+            "command": "pip install -r requirements.txt",
+            "reason": "Install all packages from requirements.txt",
+            "risk_level": "low",
+            "can_rollback": true,
+            "rollback_command": "pip uninstall django -y"
+          }
+        ],
+        "explanation": "Django is missing. Install it using pip install -r requirements.txt to install all required packages."
+      },
+      "tags": ["python", "missing_dependency", "pip"]
+    },
+    {
+      "input": {
+        "error_message": "EACCES permission denied",
+        "command": "npm install -g express",
+        "project_type": "nodejs"
+      },
+      "reasoning": "Permission error when installing globally. Should use npx or local installation instead.",
+      "output": {
+        "error_type": "permission_error",
+        "root_cause": "Global npm installation requires administrator privileges",
+        "confidence": 0.88,
+        "recovery_steps": [
+          {
+            "command": "npm install express",
+            "reason": "Install locally instead of globally to avoid permission issues",
+            "risk_level": "low",
+            "can_rollback": true,
+            "rollback_command": "npm uninstall express"
+          }
+        ],
+        "explanation": "Global installation requires admin rights. Install locally instead using npm install express."
+      },
+      "tags": ["nodejs", "permission_error", "npm"]
+    }
+  ]
+}
+
+

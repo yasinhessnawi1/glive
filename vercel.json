@@ -1,0 +1,44 @@
+{
+    "buildCommand": "cd web && npm run build",
+    "devCommand": "cd web && npm run dev",
+    "installCommand": "cd web && npm install",
+    "framework": "nextjs",
+    "outputDirectory": "web/.next",
+    "env": {
+        "NEXT_PUBLIC_API_URL": "https://glive-agent.fly.dev"
+    },
+    "build": {
+        "env": {
+            "NEXT_PUBLIC_API_URL": "https://glive-agent.fly.dev"
+        }
+    },
+    "rewrites": [
+        {
+            "source": "/api/:path*",
+            "destination": "https://glive-agent.fly.dev/api/:path*"
+        }
+    ],
+    "headers": [
+        {
+            "source": "/api/:path*",
+            "headers": [
+                {
+                    "key": "Access-Control-Allow-Credentials",
+                    "value": "true"
+                },
+                {
+                    "key": "Access-Control-Allow-Origin",
+                    "value": "*"
+                },
+                {
+                    "key": "Access-Control-Allow-Methods",
+                    "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT"
+                },
+                {
+                    "key": "Access-Control-Allow-Headers",
+                    "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
+                }
+            ]
+        }
+    ]
+}

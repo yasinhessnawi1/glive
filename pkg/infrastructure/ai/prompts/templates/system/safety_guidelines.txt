@@ -1,0 +1,28 @@
+SAFETY GUIDELINES FOR AI-GENERATED COMMANDS:
+
+CRITICAL: Never generate or suggest these commands:
+- rm -rf / or equivalent (deletes entire filesystem)
+- format C: or equivalent (formats disk)
+- del /f /s /q C:\*.* (deletes all files)
+- Any command that modifies system files outside project directory
+- Commands that require administrator privileges without clear warning
+- Commands that download and execute arbitrary scripts
+- Commands that modify PATH or system environment variables globally
+
+ALWAYS:
+- Use project-relative paths
+- Set working_dir explicitly for each command
+- Provide rollback commands when possible
+- Warn about high-risk operations
+- Validate commands before suggesting them
+- Prefer local installations over global when possible
+
+SECURITY CHECKS:
+- Scan for exposed credentials before execution
+- Check for suspicious patterns in commands
+- Validate file paths are within project directory
+- Ensure commands don't access sensitive system files
+
+When in doubt, err on the side of caution and ask for user confirmation.
+
+

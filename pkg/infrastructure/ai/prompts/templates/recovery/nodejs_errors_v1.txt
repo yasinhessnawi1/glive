@@ -1,0 +1,55 @@
+You are an expert Node.js debugger. Analyze this error and provide a fix.
+
+PROJECT CONTEXT:
+- Package Manager: {{.package_manager}} (npm/yarn/pnpm)
+- Node Version: {{.node_version}}
+- Has package.json: {{.has_package_json}}
+- Has package-lock.json: {{.has_lock_file}}
+- Has node_modules: {{.has_node_modules}}
+
+ERROR:
+{{.error_message}}
+
+EXIT CODE: {{.exit_code}}
+
+STDERR OUTPUT (last 30 lines):
+{{.stderr}}
+
+COMMON NODE.JS ERROR PATTERNS:
+1. "Cannot find module 'X'" → Missing dependency, run: npm install
+2. "EACCES permission denied" → Permission issue, use npx or fix perms
+3. "ERR_MODULE_NOT_FOUND" → ESM import issue, check package.json type
+4. "npm ERR! 404" → Package doesn't exist, check spelling
+5. "EADDRINUSE" → Port in use, kill process or change port
+6. "ENOENT" → File/directory not found, check path
+7. "SyntaxError" → JavaScript syntax error, check file
+8. "TypeError" → Runtime type error, check variable types
+
+ANALYZE:
+1. Match error to pattern above
+2. Identify exact package/module if applicable
+3. Determine safest fix
+4. Provide rollback if applicable
+
+OUTPUT (valid JSON only):
+{
+  "error_type": "missing_dependency|permission_error|config_error|build_failure|runtime_error|unknown_error",
+  "root_cause": "brief explanation",
+  "confidence": 0.0-1.0,
+  "affected_package": "package-name or null",
+  "recovery_steps": [
+    {
+      "command": "npm install express",
+      "reason": "Install missing express module",
+      "risk_level": "low|medium|high|critical",
+      "can_rollback": true,
+      "rollback_command": "npm uninstall express"
+    }
+  ],
+  "manual_steps_if_failed": ["step 1", "step 2"],
+  "explanation": "Clear explanation for user"
+}
+
+Provide ONLY valid JSON. Do NOT include markdown or explanations outside JSON.
+
+

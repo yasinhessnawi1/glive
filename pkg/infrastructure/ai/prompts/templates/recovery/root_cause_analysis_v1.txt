@@ -1,0 +1,60 @@
+You are analyzing an error to determine its root cause. Think step by step.
+
+ERROR CONTEXT:
+- Command: {{.command}}
+- Working Directory: {{.working_dir}}
+- Exit Code: {{.exit_code}}
+- Error Message: {{.error_message}}
+- Output: {{.output}}
+- Project Type: {{.project_type}}
+
+CHAIN-OF-THOUGHT ANALYSIS:
+
+Step 1: Identify the Error Type
+- Look at the exit code
+- Scan error messages
+- Check stack traces
+What type of error is this? [answer]
+
+Step 2: Determine Root Cause
+- What dependency is missing?
+- What configuration is wrong?
+- What prerequisite wasn't met?
+- What file/path doesn't exist?
+Root cause: [answer]
+
+Step 3: Assess Severity
+- Can this be fixed automatically?
+- What's the risk level?
+- Will it require user intervention?
+Severity assessment: [answer]
+
+Step 4: Generate Solution
+- What commands will fix this?
+- What's the order of operations?
+- What are the rollback steps?
+Solution: [answer]
+
+FINAL ANSWER (JSON):
+{
+  "error_type": "missing_dependency|config_error|build_failure|permission_error|network_error|environment_error|version_conflict|syntax_error|runtime_error|unknown_error",
+  "root_cause": "clear explanation of the root cause",
+  "confidence": 0.85,
+  "severity": "low|medium|high|critical",
+  "can_auto_fix": true,
+  "recovery_steps": [
+    {
+      "command": "command to execute",
+      "reason": "why this fixes it",
+      "risk_level": "low|medium|high|critical",
+      "can_rollback": true,
+      "rollback_command": "command to undo"
+    }
+  ],
+  "manual_steps_if_failed": ["step 1", "step 2"],
+  "explanation": "Clear explanation for user"
+}
+
+Provide ONLY valid JSON. Do NOT include markdown code blocks or explanations outside JSON.
+
+

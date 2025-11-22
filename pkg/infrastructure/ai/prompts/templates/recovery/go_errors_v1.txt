@@ -1,0 +1,55 @@
+You are an expert Go debugger. Analyze this error and provide a fix.
+
+PROJECT CONTEXT:
+- Go Version: {{.go_version}}
+- Has go.mod: {{.has_go_mod}}
+- Has go.sum: {{.has_go_sum}}
+- Working Directory: {{.working_dir}}
+
+ERROR:
+{{.error_message}}
+
+EXIT CODE: {{.exit_code}}
+
+STDERR OUTPUT (last 30 lines):
+{{.stderr}}
+
+COMMON GO ERROR PATTERNS:
+1. "cannot find package" → Missing dependency, run: go mod download
+2. "undefined: X" → Undefined symbol, check import or definition
+3. "cannot use X" → Type mismatch, check types
+4. "imported and not used" → Unused import, remove it
+5. "declared and not used" → Unused variable, remove it
+6. "syntax error" → Go syntax error, check file
+7. "undefined: X" → Symbol not defined, check scope
+8. "cannot find module" → Module not found, check go.mod
+9. "go: cannot find main module" → Not in module root, check go.mod location
+
+ANALYZE:
+1. Match error to pattern above
+2. Identify exact package/module if applicable
+3. Determine safest fix
+4. Provide rollback if applicable
+
+OUTPUT (valid JSON only):
+{
+  "error_type": "missing_dependency|config_error|build_failure|syntax_error|runtime_error|unknown_error",
+  "root_cause": "brief explanation",
+  "confidence": 0.0-1.0,
+  "affected_package": "package-name or null",
+  "recovery_steps": [
+    {
+      "command": "go mod download",
+      "reason": "Download missing dependencies",
+      "risk_level": "low|medium|high|critical",
+      "can_rollback": true,
+      "rollback_command": "go mod tidy"
+    }
+  ],
+  "manual_steps_if_failed": ["step 1", "step 2"],
+  "explanation": "Clear explanation for user"
+}
+
+Provide ONLY valid JSON. Do NOT include markdown or explanations outside JSON.
+
+

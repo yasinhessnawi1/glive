@@ -1,0 +1,620 @@
+openapi: 3.0.3
+info:
+  title: GLive Agent API
+  version: 1.0.0
+  description: |
+    Local API for managing project setups from GitHub repositories.
+    This API provides endpoints for cloning, analyzing, and running GitHub projects
+    with AI-powered setup assistance.
+  contact:
+    name: GLive API Support
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+paths:
+  /health:
+    get:
+      summary: Health check
+      description: Check if the API server is running and healthy
+      operationId: healthCheck
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  version:
+                    type: string
+                    example: "0.1.0"
+
+  /api/v1/projects:
+    get:
+      summary: List all projects
+      description: Retrieve a list of all projects managed by GLive
+      operationId: listProjects
+      tags:
+        - Projects
+      responses:
+        '200':
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectListResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResponse'
+
+    post:
+      summary: Create a new project
+      description: Start a new project setup from a GitHub repository URL
+      operationId: createProject
+      tags:
+        - Projects
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectRequest'
+      responses:
+        '201':
+          description: Project created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '202':
+          description: Project setup started (accepted)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '400':
+          description: Bad request - invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResponse'
+
+  /api/v1/projects/{id}:
+    get:
+      summary: Get project details
+      description: Retrieve detailed information about a specific project
+      operationId: getProject
+      tags:
+        - Projects
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Project identifier
+          schema:
+            type: string
+            example: project-123
+      responses:
+        '200':
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectResponse'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResponse'
+
+    delete:
+      summary: Delete a project
+      description: Remove a project and clean up associated resources
+      operationId: deleteProject
+      tags:
+        - Projects
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Project identifier
+          schema:
+            type: string
+            example: project-123
+      responses:
+        '200':
+          description: Project deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResponse'
+
+  /api/v1/projects/{id}/start:
+    post:
+      summary: Start a project
+      description: Start running a project that has been set up
+      operationId: startProject
+      tags:
+        - Projects
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Project identifier
+          schema:
+            type: string
+            example: project-123
+      responses:
+        '200':
+          description: Project started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResponse'
+        '400':
+          description: Project cannot be started (invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResponse'
+
+  /api/v1/projects/{id}/stop:
+    post:
+      summary: Stop a running project
+      description: Stop a project that is currently running
+      operationId: stopProject
+      tags:
+        - Projects
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Project identifier
+          schema:
+            type: string
+            example: project-123
+      responses:
+        '200':
+          description: Project stopped successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResponse'
+        '400':
+          description: Project cannot be stopped (invalid state)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResponse'
+
+  /api/v1/projects/{id}/cleanup:
+    post:
+      summary: Cleanup a project
+      description: Clean up project resources and temporary files
+      operationId: cleanupProject
+      tags:
+        - Projects
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Project identifier
+          schema:
+            type: string
+            example: project-123
+      responses:
+        '200':
+          description: Project cleanup initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResponse'
+
+  /api/v1/config:
+    get:
+      summary: Get configuration
+      description: Retrieve the current GLive configuration
+      operationId: getConfig
+      tags:
+        - Configuration
+      responses:
+        '200':
+          description: Configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResponse'
+
+    put:
+      summary: Update configuration
+      description: Update GLive configuration settings
+      operationId: updateConfig
+      tags:
+        - Configuration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigUpdateRequest'
+      responses:
+        '200':
+          description: Configuration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigUpdateResponse'
+        '400':
+          description: Invalid configuration values
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResponse'
+
+  /api/v1/ws/{project_id}:
+    get:
+      summary: WebSocket connection for real-time updates
+      description: |
+        Establish a WebSocket connection to receive real-time updates about a project.
+        Message types include project status changes, command output, command completion, and errors.
+      operationId: websocketConnection
+      tags:
+        - WebSocket
+      parameters:
+        - name: project_id
+          in: path
+          required: true
+          description: Project identifier to subscribe to
+          schema:
+            type: string
+            example: project-123
+      responses:
+        '101':
+          description: Switching Protocols - WebSocket connection established
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIErrorResponse'
+
+components:
+  schemas:
+    ProjectRequest:
+      type: object
+      required:
+        - github_url
+      properties:
+        github_url:
+          type: string
+          format: uri
+          description: GitHub repository URL (HTTPS, SSH, or shorthand)
+          example: https://github.com/user/repo
+        mode:
+          type: string
+          enum:
+            - auto
+            - assisted
+            - manual
+          default: auto
+          description: Setup mode - auto (fully automated), assisted (with prompts), or manual (step-by-step)
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique project identifier
+          example: project-123
+        github_url:
+          type: string
+          format: uri
+          description: GitHub repository URL
+          example: https://github.com/user/repo
+        status:
+          type: string
+          enum:
+            - pending
+            - cloning
+            - analyzing
+            - ready
+            - running
+            - stopped
+            - failed
+          description: Current project status
+          example: ready
+        created_at:
+          type: string
+          format: date-time
+          description: Project creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+
+    ProjectResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Project'
+        meta:
+          $ref: '#/components/schemas/APIMeta'
+
+    ProjectListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            projects:
+              type: array
+              items:
+                $ref: '#/components/schemas/Project'
+        meta:
+          $ref: '#/components/schemas/APIMeta'
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+              example: Operation completed successfully
+            id:
+              type: string
+              example: project-123
+        meta:
+          $ref: '#/components/schemas/APIMeta'
+
+    ConfigResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          $ref: '#/components/schemas/Config'
+        meta:
+          $ref: '#/components/schemas/APIMeta'
+
+    Config:
+      type: object
+      properties:
+        api_provider:
+          type: string
+          enum:
+            - deepseek
+            - openai
+            - claude
+          description: AI provider to use
+          example: deepseek
+        default_mode:
+          type: string
+          enum:
+            - auto
+            - assisted
+            - manual
+          description: Default setup mode
+          example: auto
+        workspace_dir:
+          type: string
+          description: Workspace directory path
+          example: ~/glive-workspace
+        agent_port:
+          type: integer
+          description: Port for the agent server
+          example: 8080
+        enable_sandbox:
+          type: boolean
+          description: Enable sandbox mode for command execution
+          example: false
+
+    ConfigUpdateRequest:
+      type: object
+      properties:
+        api_provider:
+          type: string
+          enum:
+            - deepseek
+            - openai
+            - claude
+        default_mode:
+          type: string
+          enum:
+            - auto
+            - assisted
+            - manual
+        workspace_dir:
+          type: string
+        agent_port:
+          type: integer
+        enable_sandbox:
+          type: boolean
+
+    ConfigUpdateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            message:
+              type: string
+              example: Configuration updated
+            updates:
+              type: object
+              additionalProperties: true
+        meta:
+          $ref: '#/components/schemas/APIMeta'
+
+    APIError:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Error code
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          description: Human-readable error message
+          example: Invalid request body
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details
+
+    APIErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          $ref: '#/components/schemas/APIError'
+        meta:
+          $ref: '#/components/schemas/APIMeta'
+
+    APIMeta:
+      type: object
+      properties:
+        request_id:
+          type: string
+          description: Unique request identifier for tracing
+          example: req-abc123
+        duration:
+          type: string
+          description: Request processing duration
+          example: 45ms
+
+    WSMessage:
+      type: object
+      description: WebSocket message format
+      properties:
+        type:
+          type: string
+          enum:
+            - project.status
+            - command.output
+            - command.complete
+            - error
+          description: Message type
+        payload:
+          type: object
+          additionalProperties: true
+          description: Message payload (varies by type)
+
+  securitySchemes:
+    localhostOnly:
+      type: apiKey
+      in: header
+      name: X-Forwarded-For
+      description: Only localhost connections are allowed
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Projects
+    description: Project management operations
+  - name: Configuration
+    description: Configuration management
+  - name: WebSocket
+    description: Real-time WebSocket connections
+

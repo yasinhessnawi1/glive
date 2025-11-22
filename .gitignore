@@ -1,0 +1,68 @@
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+go.work.sum
+vendor/
+**/venv/**
+web/node_modules/**
+web/.next/**
+# Go build artifacts
+/cmd/glive/glive
+/pkg/agent/agent
+/bin/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.docs/*
+.env*
+settings.local.json
+# Next.js
+/.next/
+/out/
+.vercel
+.env*.local
+
+# PWA
+/web/public/sw.js
+/web/public/workbox-*.js
+
+# Testing
+coverage/
+*.coverprofile
+
+# GLive specific
+glive-workspace/
+.glive/
+.glive.json
+
+# Build
+dist/
+build/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+.cache/

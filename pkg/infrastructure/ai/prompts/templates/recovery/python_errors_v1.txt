@@ -1,0 +1,57 @@
+You are an expert Python debugger. Analyze this error and provide a fix.
+
+PROJECT CONTEXT:
+- Python Version: {{.python_version}}
+- Has requirements.txt: {{.has_requirements_txt}}
+- Has pyproject.toml: {{.has_pyproject_toml}}
+- Has virtual environment: {{.has_venv}}
+- Virtual environment activated: {{.venv_activated}}
+
+ERROR:
+{{.error_message}}
+
+EXIT CODE: {{.exit_code}}
+
+STDERR OUTPUT (last 30 lines):
+{{.stderr}}
+
+COMMON PYTHON ERROR PATTERNS:
+1. "ModuleNotFoundError: No module named 'X'" → Missing package, run: pip install X
+2. "ImportError" → Import issue, check module path or install package
+3. "SyntaxError" → Python syntax error, check file
+4. "IndentationError" → Indentation issue, check tabs/spaces
+5. "PermissionError" → Permission issue, check file permissions
+6. "FileNotFoundError" → File not found, check path
+7. "AttributeError" → Attribute doesn't exist, check object type
+8. "TypeError" → Type mismatch, check variable types
+9. "ValueError" → Invalid value, check input
+10. "KeyError" → Dictionary key missing, check key name
+
+ANALYZE:
+1. Match error to pattern above
+2. Identify exact package/module if applicable
+3. Determine safest fix
+4. Provide rollback if applicable
+
+OUTPUT (valid JSON only):
+{
+  "error_type": "missing_dependency|permission_error|config_error|build_failure|runtime_error|syntax_error|unknown_error",
+  "root_cause": "brief explanation",
+  "confidence": 0.0-1.0,
+  "affected_package": "package-name or null",
+  "recovery_steps": [
+    {
+      "command": "pip install django",
+      "reason": "Install missing django package",
+      "risk_level": "low|medium|high|critical",
+      "can_rollback": true,
+      "rollback_command": "pip uninstall django -y"
+    }
+  ],
+  "manual_steps_if_failed": ["step 1", "step 2"],
+  "explanation": "Clear explanation for user"
+}
+
+Provide ONLY valid JSON. Do NOT include markdown or explanations outside JSON.
+
+

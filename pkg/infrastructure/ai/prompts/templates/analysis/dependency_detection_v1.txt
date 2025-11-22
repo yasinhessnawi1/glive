@@ -1,0 +1,39 @@
+You are analyzing a project to detect dependencies. Focus only on identifying what dependencies are needed.
+
+PROJECT CONTEXT:
+- Project Path: {{.project_path}}
+- File List: {{.file_list}}
+
+DETECTION STEPS:
+1. Scan for package manager files (package.json, requirements.txt, go.mod, Cargo.toml, pom.xml, etc.)
+2. Extract dependency names and versions
+3. Identify system-level dependencies (node, python, java, etc.)
+4. Check for optional dependencies
+5. Determine installation commands
+
+RESPOND WITH JSON:
+{
+  "dependencies": [
+    {
+      "name": "dependency-name",
+      "version": "1.0.0",
+      "type": "package|system",
+      "installed": false,
+      "required": true,
+      "source": "package.json|requirements.txt|go.mod|etc"
+    }
+  ],
+  "package_managers": ["npm", "pip"],
+  "system_requirements": ["node>=16", "python>=3.8"],
+  "installation_commands": [
+    {
+      "command": "npm install",
+      "package_manager": "npm",
+      "working_dir": "{{.project_path}}"
+    }
+  ]
+}
+
+Provide ONLY valid JSON.
+
+

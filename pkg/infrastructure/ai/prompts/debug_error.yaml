@@ -1,0 +1,138 @@
+name: debug_error
+version: "3.0"
+category: recovery
+max_tokens: 4000
+system_prompt: |
+  You are an expert software engineer and debugger. Your approach is METHODICAL and THOROUGH.
+
+  DEBUGGING METHODOLOGY:
+  1. NEVER assume - always verify step by step
+  2. Start with the EXACT error message - what does it literally say?
+  3. Work backwards from the error to find the root cause
+  4. Consider MULTIPLE possible causes, not just the obvious one
+  5. Provide SPECIFIC commands to diagnose and fix
+
+  Your goal is to help users understand AND fix their problems, not just identify them.
+
+variables:
+  - command
+  - output
+  - error_msg
+  - project_type
+  - project_path
+  - readme_content
+  - file_list
+  - platform
+template: |
+  A command failed during project setup. Let's debug this STEP BY STEP.
+
+  ## The Failed Command
+  ```
+  {{.command}}
+  ```
+
+  ## Full Output
+  ```
+  {{.output}}
+  ```
+
+  ## Error Message
+  ```
+  {{.error_msg}}
+  ```
+
+  ## Context
+  - **Project Type**: {{.project_type}}
+  - **Project Path**: {{.project_path}}
+  - **Platform**: {{.platform}}
+
+  ## Project README (check for relevant setup info)
+  {{.readme_content}}
+
+  ## File Structure
+  {{.file_list}}
+
+  ---
+
+  ## YOUR DEBUGGING PROCESS
+
+  ### Step 1: Parse the Error Literally
+  - What is the EXACT error message?
+  - What file/line is mentioned (if any)?
+  - What command or process failed?
+
+  ### Step 2: Identify Possible Causes (list ALL possibilities)
+  - Could it be a missing dependency?
+  - Could it be a path issue?
+  - Could it be a permission issue?
+  - Could it be a version mismatch?
+  - Could it be a configuration issue?
+  - Could it be a network issue?
+  - Could the README have special instructions we missed?
+
+  ### Step 3: Diagnostic Commands
+  What commands can we run to determine which cause is correct?
+
+  ### Step 4: Solutions for Each Cause
+  For each possible cause, what's the fix?
+
+  ### Step 5: Recommended Action
+  Based on the analysis, what should we try first?
+
+  ---
+
+  ## Response Format
+
+  ### Error Analysis
+
+  **Literal Error**: [Quote the exact error]
+
+  **Error Type**: [missing_file | missing_dependency | permission_error | path_error | version_mismatch | network_error | config_error | syntax_error | other]
+
+  ### Step-by-Step Diagnosis
+
+  1. **First, let's check...** [diagnostic step]
+     ```
+     [command to run]
+     ```
+
+  2. **Then verify...** [next diagnostic step]
+     ```
+     [command to run]
+     ```
+
+  ### Possible Causes (ranked by likelihood)
+
+  1. **Most likely**: [cause] - [why you think this]
+  2. **Second possibility**: [cause] - [why]
+  3. **Third possibility**: [cause] - [why]
+
+  ### Solutions
+
+  **For cause #1:**
+  ```
+  [exact command to fix]
+  ```
+
+  **For cause #2:**
+  ```
+  [exact command to fix]
+  ```
+
+  **For cause #3:**
+  ```
+  [exact command to fix]
+  ```
+
+  ### README Check
+  [Did the README mention anything relevant to this error?]
+
+  ### Recommended Next Steps
+
+  1. First try: [specific action with command]
+  2. If that fails: [alternative with command]
+  3. If still failing: [another alternative]
+
+  ### Prevention
+  [How to avoid this error in the future]
+

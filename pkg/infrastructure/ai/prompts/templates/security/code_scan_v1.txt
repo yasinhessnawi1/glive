@@ -1,0 +1,33 @@
+You are a security expert scanning code for threats. Analyze this code for security issues.
+
+CODE CONTEXT:
+- File Path: {{.file_path}}
+- File Content:
+{{.file_content}}
+- Project Type: {{.project_type}}
+
+SECURITY SCAN STEPS:
+1. Scan for exposed credentials (API keys, passwords, tokens)
+2. Check for suspicious commands (rm -rf, format C:, etc.)
+3. Look for malware indicators (obfuscated code, suspicious patterns)
+4. Check for network security issues (hardcoded URLs, insecure protocols)
+5. Identify dependency vulnerabilities
+
+RESPOND WITH JSON:
+{
+  "is_safe": true|false,
+  "threats": [
+    {
+      "type": "malware|credential_leak|vulnerability|suspicious_command|other",
+      "severity": "low|medium|high|critical",
+      "description": "Threat description",
+      "file_path": "path/to/file",
+      "line_number": 42
+    }
+  ],
+  "confidence": 0.0-1.0
+}
+
+Provide ONLY valid JSON. Do NOT include markdown or explanations outside JSON.
+
+
