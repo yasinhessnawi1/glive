@@ -38,7 +38,7 @@ GitHub is filled with amazing projects, but getting them to run locally is often
 #### Option 1: Using Go (CLI only)
 ```bash
 # Install Go from https://go.dev/dl/ if not already installed
-go install github.com/yourusername/glive/cmd/glive@latest
+go install github.com/yasinhessnawi1/glive/cmd/glive@latest
 ```
 
 #### Option 2: From Source (Full stack)
