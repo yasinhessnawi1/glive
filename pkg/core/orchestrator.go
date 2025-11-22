@@ -284,6 +284,30 @@ func (o *Orchestrator) StartProject(ctx context.Context, projectID string, callb
 	}
 
 	var runCmd *types.Command
+
+	// Check if dependencies are installed (auto-recovery for Node.js)
+	if analysis.ProjectType == ProjectTypeNodeJS {
+		nodeModulesPath := filepath.Join(project.LocalPath, "node_modules")
+		if _, err := os.Stat(nodeModulesPath); os.IsNotExist(err) {
+			o.log("   ⚠️  Node modules not found, installing dependencies...\n")
+			o.sendProgress(callback, projectID, "installing", "Installing dependencies (auto-recovery)", 0)
+
+			exec := executor.New(project.LocalPath, ModeAuto, o.aiClient)
+			for _, cmd := range analysis.Commands {
+				if cmd.Stage == "setup" {
+					o.log(fmt.Sprintf("   $ %s\n", cmd.Command))
+					err := exec.Execute(ctx, &cmd, func(line string) {
+						o.log(fmt.Sprintf("      %s\n", line))
+					})
+					if err != nil {
+						return fmt.Errorf("failed to install dependencies: %w", err)
+					}
+				}
+			}
+			o.log("   ✓ Dependencies installed\n")
+		}
+	}
+
 	for _, cmd := range analysis.Commands {
 		if cmd.Stage == "run" {
 			runCmd = &cmd
