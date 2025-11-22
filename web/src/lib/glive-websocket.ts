@@ -25,7 +25,7 @@ export class GliveWebSocket {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
-  private handlers: Map<WSMessageType, WSMessageHandler[]> = new Map();
+  private handlers: Map<WSMessageType | '*', WSMessageHandler[]> = new Map();
   private connectionStateHandlers: ((state: ConnectionState) => void)[] = [];
   private shouldReconnect = true;
 
