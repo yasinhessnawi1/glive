@@ -8,10 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { useExecutionStream } from '@/hooks/use-execution-stream';
 import { useGliveAPI } from '@/hooks/use-glive-api';
 import type { ExecutionEvent } from '@/types/glive';
-import { 
-  ArrowLeft, 
-  Play, 
-  Square, 
+import {
+  ArrowLeft,
+  Play,
+  Square,
   RefreshCw,
   Loader2,
   CheckCircle2,
@@ -77,8 +77,8 @@ export default function ExecutionPage() {
       case 'command_started':
         return <Play className="h-4 w-4 text-blue-600" />;
       case 'command_completed':
-        return event.success ? 
-          <CheckCircle2 className="h-4 w-4 text-green-600" /> : 
+        return event.success ?
+          <CheckCircle2 className="h-4 w-4 text-green-600" /> :
           <XCircle className="h-4 w-4 text-red-600" />;
       case 'recovery_triggered':
         return <AlertCircle className="h-4 w-4 text-purple-600" />;
@@ -94,19 +94,19 @@ export default function ExecutionPage() {
   const getEventColor = (event: ExecutionEvent) => {
     switch (event.type) {
       case 'command_started':
-        return 'border-blue-200 bg-blue-50 dark:bg-blue-900/20';
+        return 'border-blue-900/30 bg-blue-900/10';
       case 'command_completed':
-        return event.success ? 
-          'border-green-200 bg-green-50 dark:bg-green-900/20' :
-          'border-red-200 bg-red-50 dark:bg-red-900/20';
+        return event.success ?
+          'border-green-900/30 bg-green-900/10' :
+          'border-red-900/30 bg-red-900/10';
       case 'recovery_triggered':
-        return 'border-purple-200 bg-purple-50 dark:bg-purple-900/20';
+        return 'border-purple-900/30 bg-purple-900/10';
       case 'execution_completed':
         return event.status === 'success' ?
-          'border-green-200 bg-green-50 dark:bg-green-900/20' :
-          'border-red-200 bg-red-50 dark:bg-red-900/20';
+          'border-green-900/30 bg-green-900/10' :
+          'border-red-900/30 bg-red-900/10';
       default:
-        return 'border-slate-200 bg-slate-50 dark:bg-slate-800';
+        return 'border-slate-800 bg-slate-900/50';
     }
   };
 
@@ -189,8 +189,8 @@ export default function ExecutionPage() {
               <div className="bg-slate-900 text-green-400 font-mono text-sm rounded-lg p-4 h-[600px] overflow-y-auto">
                 {events.length === 0 ? (
                   <div className="text-slate-500 text-center py-8">
-                    {isConnected ? 
-                      'Waiting for execution events...' : 
+                    {isConnected ?
+                      'Waiting for execution events...' :
                       'Not connected. Start execution to see live output.'}
                   </div>
                 ) : (

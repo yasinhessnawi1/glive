@@ -1,18 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useGliveAPI } from '@/hooks/use-glive-api';
+import { GliveWebSocket } from '@/lib/glive-websocket';
 import type { Project } from '@/types/glive';
-import { 
-  ArrowLeft, 
-  ExternalLink, 
-  Play, 
-  Square, 
-  Trash2, 
+import {
+  ArrowLeft,
+  ExternalLink,
+  Play,
+  Square,
+  Trash2,
   RefreshCw,
   Loader2,
   Calendar,
@@ -27,6 +28,7 @@ export default function ProjectDetailsPage() {
   const { getProject, startProject, stopProject, deleteProject, cleanupProject, loading } = useGliveAPI();
   const [project, setProject] = useState<Project | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const wsRef = useRef<GliveWebSocket | null>(null);
 
   const projectId = params.id as string;
 
@@ -38,10 +40,27 @@ export default function ProjectDetailsPage() {
       }
     };
     loadProject();
-    
-    // Refresh every 5 seconds
-    const interval = setInterval(loadProject, 5000);
-    return () => clearInterval(interval);
+
+    // Initialize WebSocket for real-time updates
+    const ws = new GliveWebSocket(projectId);
+    wsRef.current = ws;
+
+    ws.onProjectStatus((payload) => {
+      setProject((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          status: payload.status,
+        };
+      });
+    });
+
+    ws.connect();
+
+    return () => {
+      ws.disconnect();
+      wsRef.current = null;
+    };
   }, [projectId, getProject]);
 
   const handleStart = async () => {
@@ -268,8 +287,8 @@ export default function ProjectDetailsPage() {
                   Manage your project execution and resources
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {project.status === 'ready' && (
+              <CardContent className="space-y-4">
+                {['ready', 'stopped', 'pending', 'failed'].includes(project.status) && (
                   <Button
                     onClick={handleStart}
                     disabled={actionLoading !== null}
@@ -329,7 +348,7 @@ export default function ProjectDetailsPage() {
                   )}
                 </Button>
 
-                <Link href={`/dashboard/projects/${projectId}/execution`}>
+                <Link href={`/dashboard/projects/${projectId}/execution`} className="block w-full">
                   <Button variant="outline" className="w-full">
                     View Execution
                   </Button>

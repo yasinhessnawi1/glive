@@ -4,25 +4,25 @@
 export type ExecutionMode = 'auto' | 'assisted' | 'manual';
 
 // Project Types
-export type ProjectType = 
-  | 'nodejs' 
-  | 'python' 
-  | 'go' 
-  | 'rust' 
-  | 'java' 
-  | 'docker' 
-  | 'unknown' 
+export type ProjectType =
+  | 'nodejs'
+  | 'python'
+  | 'go'
+  | 'rust'
+  | 'java'
+  | 'docker'
+  | 'unknown'
   | 'polyglot';
 
 // Project Status
-export type ProjectStatus = 
-  | 'pending' 
-  | 'cloning' 
-  | 'analyzing' 
-  | 'installing' 
-  | 'running' 
-  | 'ready' 
-  | 'failed' 
+export type ProjectStatus =
+  | 'pending'
+  | 'cloning'
+  | 'analyzing'
+  | 'installing'
+  | 'running'
+  | 'ready'
+  | 'failed'
   | 'stopped';
 
 // Project Entity
@@ -44,6 +44,7 @@ export interface CreateProjectRequest {
   mode: ExecutionMode;
   enable_sandbox?: boolean;
   enable_ai_recovery?: boolean;
+  force_execution?: boolean;
 }
 
 // API Response Wrapper
@@ -93,10 +94,10 @@ export interface ConfigUpdateRequest {
 }
 
 // WebSocket Message Types
-export type WSMessageType = 
-  | 'project.status' 
-  | 'command.output' 
-  | 'command.complete' 
+export type WSMessageType =
+  | 'project.status'
+  | 'command.output'
+  | 'command.complete'
   | 'command.started'
   | 'recovery.triggered'
   | 'recovery.plan'
@@ -184,7 +185,7 @@ export interface ErrorPayload {
 }
 
 // Execution Event (unified type for frontend)
-export type ExecutionEvent = 
+export type ExecutionEvent =
   | { type: 'command_started'; command: string; command_id: string; timestamp: number }
   | { type: 'output_line'; stream: 'stdout' | 'stderr'; line: string; timestamp?: number }
   | { type: 'command_completed'; exit_code: number; success: boolean; duration?: number }

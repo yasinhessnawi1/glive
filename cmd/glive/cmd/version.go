@@ -6,7 +6,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const version = "0.1.0-alpha"
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
@@ -15,6 +19,5 @@ var versionCmd = &cobra.Command{
 }
 
 func showVersion(cmd *cobra.Command, args []string) {
-	fmt.Printf("GLive version %s\n", version)
-	fmt.Println("GitHub to Live - Automatically run any GitHub project")
+	fmt.Printf("glive version %s (commit: %s, built: %s)\n", version, commit, date)
 }

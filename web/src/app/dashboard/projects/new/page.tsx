@@ -22,12 +22,13 @@ export default function NewProjectPage() {
     mode: 'auto' as ExecutionMode,
     enable_sandbox: false,
     enable_ai_recovery: true,
+    force_execution: true,
   });
   const [createdProject, setCreatedProject] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (step < 4) {
       setStep(step + 1);
       return;
@@ -39,6 +40,7 @@ export default function NewProjectPage() {
       mode: formData.mode,
       enable_sandbox: formData.enable_sandbox,
       enable_ai_recovery: formData.enable_ai_recovery,
+      force_execution: formData.force_execution,
     });
 
     if (project) {
@@ -100,11 +102,10 @@ export default function NewProjectPage() {
               <div key={s} className="flex items-center flex-1">
                 <div className="flex flex-col items-center flex-1">
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
-                      step >= s
+                    className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= s
                         ? 'bg-blue-600 text-white'
                         : 'bg-slate-200 dark:bg-slate-700 text-slate-600'
-                    }`}
+                      }`}
                   >
                     {step > s ? <CheckCircle2 className="h-5 w-5" /> : s}
                   </div>
@@ -117,9 +118,8 @@ export default function NewProjectPage() {
                 </div>
                 {s < 4 && (
                   <div
-                    className={`h-1 flex-1 mx-2 ${
-                      step > s ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'
-                    }`}
+                    className={`h-1 flex-1 mx-2 ${step > s ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'
+                      }`}
                   />
                 )}
               </div>
@@ -253,6 +253,23 @@ export default function NewProjectPage() {
                       }
                     />
                   </div>
+                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex-1">
+                      <Label htmlFor="force_execution" className="font-semibold">
+                        Force Execution
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Force re-execution of steps even if they appear to be completed
+                      </p>
+                    </div>
+                    <Switch
+                      id="force_execution"
+                      checked={formData.force_execution}
+                      onCheckedChange={(checked) =>
+                        setFormData({ ...formData, force_execution: checked })
+                      }
+                    />
+                  </div>
                 </div>
               )}
 
@@ -272,6 +289,7 @@ export default function NewProjectPage() {
                     <div className="space-y-1 text-sm text-muted-foreground">
                       <p>Sandbox: {formData.enable_sandbox ? 'Enabled' : 'Disabled'}</p>
                       <p>AI Recovery: {formData.enable_ai_recovery ? 'Enabled' : 'Disabled'}</p>
+                      <p>Force Execution: {formData.force_execution ? 'Enabled' : 'Disabled'}</p>
                     </div>
                   </div>
                 </div>
@@ -314,4 +332,3 @@ export default function NewProjectPage() {
     </div>
   );
 }
-

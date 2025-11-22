@@ -105,33 +105,33 @@ export default function ProjectsPage() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filteredProjects.map((project) => (
-                <Card key={project.id} className="hover:shadow-lg transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        <CardTitle className="truncate">
+                <Card key={project.id} className="hover:shadow-lg transition-all duration-200 group border-slate-200 dark:border-slate-700">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <CardTitle className="truncate text-lg font-semibold text-slate-900 dark:text-slate-100">
                           {project.name || project.github_url.split('/').pop()}
                         </CardTitle>
-                        <CardDescription className="truncate">
+                        <CardDescription className="truncate text-sm text-slate-500 dark:text-slate-400">
                           {project.github_url}
                         </CardDescription>
                       </div>
-                      <Badge className={getStatusColor(project.status)} variant="outline">
+                      <Badge className={`${getStatusColor(project.status)} shrink-0 capitalize`} variant="outline">
                         {project.status}
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>Type:</span>
-                      <Badge variant="secondary" className="text-xs">
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground bg-slate-50 dark:bg-slate-800/50 p-2 rounded-md">
+                      <span className="font-medium">Type:</span>
+                      <Badge variant="secondary" className="text-xs uppercase tracking-wider">
                         {project.type || 'unknown'}
                       </Badge>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-3 pt-2">
                       <Link href={`/dashboard/projects/${project.id}`} className="flex-1">
-                        <Button variant="outline" className="w-full" size="sm">
-                          View
+                        <Button className="w-full bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:hover:bg-slate-200 dark:text-slate-900" size="sm">
+                          View Details
                           <ArrowRight className="h-3 w-3 ml-2" />
                         </Button>
                       </Link>
@@ -140,7 +140,7 @@ export default function ProjectsPage() {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        <Button variant="ghost" size="sm">
+                        <Button variant="outline" size="sm" className="px-3" title="View on GitHub">
                           <ExternalLink className="h-4 w-4" />
                         </Button>
                       </a>
@@ -155,4 +155,3 @@ export default function ProjectsPage() {
     </div>
   );
 }
-

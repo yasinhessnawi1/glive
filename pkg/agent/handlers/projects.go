@@ -12,8 +12,9 @@ import (
 
 // CreateProjectRequest represents a request to create a project
 type CreateProjectRequest struct {
-	GitHubURL string `json:"github_url"`
-	Mode      string `json:"mode"`
+	GitHubURL      string `json:"github_url"`
+	Mode           string `json:"mode"`
+	ForceExecution bool   `json:"force_execution"`
 }
 
 // ListProjects returns all projects
@@ -65,7 +66,7 @@ func (h *Handler) CreateProject(c *fiber.Ctx) error {
 	go func() {
 		ctx := context.Background()
 		// We ignore the returned project since we already have it, but we should handle errors
-		_, err := h.Orchestrator.RunProject(ctx, projectID, req.GitHubURL, mode, func(update core.ProgressUpdate) {
+		_, err := h.Orchestrator.RunProject(ctx, projectID, req.GitHubURL, mode, req.ForceExecution, func(update core.ProgressUpdate) {
 			h.EventBus.Publish(update.ProjectID, update)
 			statusMsg := api.NewProjectStatusMessage(update.ProjectID, update.Stage, update.Message)
 			h.EventBus.Publish(update.ProjectID, statusMsg)

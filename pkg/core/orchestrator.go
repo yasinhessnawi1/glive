@@ -66,7 +66,7 @@ func NewOrchestrator(cfg *Config, output io.Writer) (*Orchestrator, error) {
 type ProgressCallback func(update ProgressUpdate)
 
 // RunProject orchestrates the entire process of running a GitHub project
-func (o *Orchestrator) RunProject(ctx context.Context, projectID, githubURL string, mode ExecutionMode, callback ProgressCallback) (*Project, error) {
+func (o *Orchestrator) RunProject(ctx context.Context, projectID, githubURL string, mode ExecutionMode, forceExecution bool, callback ProgressCallback) (*Project, error) {
 	if projectID == "" {
 		projectID = generateProjectID()
 	}
@@ -108,11 +108,27 @@ func (o *Orchestrator) RunProject(ctx context.Context, projectID, githubURL stri
 	project.Status = StatusCloning
 	o.stateManager.SaveProject(project)
 
+	// If force execution is enabled, remove existing directory first
+	if forceExecution {
+		localPath := filepath.Join(o.config.WorkspaceDir, repository.Name)
+		if _, err := os.Stat(localPath); err == nil {
+			o.log("   ⚠️  Force execution enabled: Removing existing directory...\n")
+			if err := os.RemoveAll(localPath); err != nil {
+				o.log(fmt.Sprintf("   ⚠️  Failed to remove existing directory: %v\n", err))
+			}
+		}
+	}
+
 	err = repository.Clone(o.config.WorkspaceDir, o.output)
 	if err != nil {
-		project.Status = StatusFailed
-		o.stateManager.SaveProject(project)
-		return nil, fmt.Errorf("failed to clone repository: %w", err)
+		// If clone failed because it exists, and we didn't force, just continue
+		if strings.Contains(err.Error(), "already exists") && !forceExecution {
+			o.log("   ℹ️  Repository already exists, using existing files\n")
+		} else {
+			project.Status = StatusFailed
+			o.stateManager.SaveProject(project)
+			return nil, fmt.Errorf("failed to clone repository: %w", err)
+		}
 	}
 
 	project.LocalPath = repository.GetLocalPath()
