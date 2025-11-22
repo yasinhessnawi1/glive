@@ -4,14 +4,6 @@
     "installCommand": "cd web && npm install",
     "framework": "nextjs",
     "outputDirectory": "web/.next",
-    "env": {
-        "NEXT_PUBLIC_API_URL": "https://glive-agent.fly.dev"
-    },
-    "build": {
-        "env": {
-            "NEXT_PUBLIC_API_URL": "https://glive-agent.fly.dev"
-        }
-    },
     "rewrites": [
         {
             "source": "/api/:path*",
