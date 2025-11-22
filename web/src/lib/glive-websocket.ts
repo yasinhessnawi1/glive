@@ -13,7 +13,13 @@ import type {
   ErrorPayload,
 } from '@/types/glive';
 
-const DEFAULT_WS_URL = process.env.NEXT_PUBLIC_GLIVE_WS_URL || 'ws://localhost:8080';
+// Derive WebSocket URL from API URL (convert http -> ws, https -> wss)
+const getDefaultWsUrl = () => {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+  return apiUrl.replace(/^http/, 'ws');
+};
+
+const DEFAULT_WS_URL = process.env.NEXT_PUBLIC_GLIVE_WS_URL || getDefaultWsUrl();
 
 export type WSMessageHandler = (message: WSMessage) => void;
 export type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error';

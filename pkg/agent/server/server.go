@@ -40,7 +40,7 @@ func New(config *core.Config) *Server {
 	app.Use(tracing.FiberMiddleware())
 
 	// CORS middleware - must be early to handle preflight requests
-	corsOrigins := "http://localhost:3000,http://127.0.0.1:3000,https://g-live.vercel.app"
+	corsOrigins := "http://localhost:3000,http://127.0.0.1:3000,https://g-live.vercel.app,https://glive-agent.fly.dev"
 	if os.Getenv("GLIVE_ENV") == "production" {
 		corsOrigins = "*" // Allow all origins in production (Vercel will have dynamic URLs)
 	}
