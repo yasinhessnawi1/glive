@@ -8,7 +8,7 @@ import type {
   ConfigUpdateRequest,
 } from '@/types/glive';
 
-const DEFAULT_API_URL = process.env.NEXT_PUBLIC_GLIVE_API_URL || 'http://localhost:8080';
+const DEFAULT_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export class GliveAPIClient {
   private baseURL: string;
@@ -22,7 +22,7 @@ export class GliveAPIClient {
     options: RequestInit = {}
   ): Promise<APIResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
-    
+
     const defaultHeaders: HeadersInit = {
       'Content-Type': 'application/json',
     };

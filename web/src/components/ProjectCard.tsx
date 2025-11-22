@@ -48,7 +48,8 @@ export default function ProjectCard({ project, onUpdate }: ProjectCardProps) {
 
     setLoading(true)
     try {
-      await fetch(`http://localhost:8080/api/v1/projects/${project.id}`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+      await fetch(`${apiUrl}/api/v1/projects/${project.id}`, {
         method: 'DELETE',
       })
       onUpdate()
@@ -62,7 +63,8 @@ export default function ProjectCard({ project, onUpdate }: ProjectCardProps) {
   const handleCleanup = async () => {
     setLoading(true)
     try {
-      await fetch(`http://localhost:8080/api/v1/projects/${project.id}/cleanup`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+      await fetch(`${apiUrl}/api/v1/projects/${project.id}/cleanup`, {
         method: 'POST',
       })
       onUpdate()

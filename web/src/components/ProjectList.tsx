@@ -21,7 +21,8 @@ export default function ProjectList() {
 
   const fetchProjects = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/v1/projects')
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+      const response = await fetch(`${apiUrl}/api/v1/projects`)
       if (response.ok) {
         const data = await response.json()
         setProjects(data.projects || [])

@@ -24,8 +24,8 @@ export default function ProjectInput({ onProjectCreated }: ProjectInputProps) {
     setLoading(true)
 
     try {
-      // TODO: Connect to actual API
-      const response = await fetch('http://localhost:8080/api/v1/projects', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
+      const response = await fetch(`${apiUrl}/api/v1/projects`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -78,11 +78,10 @@ export default function ProjectInput({ onProjectCreated }: ProjectInputProps) {
                 key={m}
                 type="button"
                 onClick={() => setMode(m)}
-                className={`px-4 py-2 rounded-lg border-2 transition-all ${
-                  mode === m
+                className={`px-4 py-2 rounded-lg border-2 transition-all ${mode === m
                     ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
                     : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
-                }`}
+                  }`}
                 disabled={loading}
               >
                 <div className="font-semibold capitalize">{m}</div>
