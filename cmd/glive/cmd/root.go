@@ -18,15 +18,15 @@ import (
 )
 
 var (
-	cfgFile        string
-	mode           string
-	verbose        bool
-	force          bool
-	noTUI          bool
-	aiMode         string
-	aiConfidence   float64
-	noFallback     bool
-	noAIRecovery   bool
+	cfgFile      string
+	mode         string
+	verbose      bool
+	force        bool
+	noTUI        bool
+	aiMode       string
+	aiConfidence float64
+	noFallback   bool
+	noAIRecovery bool
 	// AI Recovery flags
 	maxRecoveryAttempts int
 	autoApproveRisk     string
@@ -97,11 +97,11 @@ EXAMPLES:
 
   # Clean up old projects
   glive cleanup`,
-	Args:                  cobra.MaximumNArgs(1),
-	DisableFlagParsing:    false,
-	DisableSuggestions:    false,
+	Args:                       cobra.MaximumNArgs(1),
+	DisableFlagParsing:         false,
+	DisableSuggestions:         false,
 	SuggestionsMinimumDistance: 2,
-	Run: runProject,
+	Run:                        runProject,
 }
 
 // Execute runs the root command
@@ -118,17 +118,17 @@ func init() {
 	// Command-specific flags
 	rootCmd.Flags().StringVarP(&mode, "mode", "m", "auto", "execution mode: auto, assisted, manual")
 	rootCmd.Flags().BoolVarP(&force, "force", "f", false, "force re-clone even if project exists")
-	
+
 	// AI-first flags
 	rootCmd.Flags().StringVar(&aiMode, "ai-mode", "ai-first", "AI execution mode: ai-first, traditional, hybrid")
 	rootCmd.Flags().Float64Var(&aiConfidence, "ai-confidence", 0.7, "AI confidence threshold (0.0-1.0)")
 	rootCmd.Flags().BoolVar(&noFallback, "no-fallback", false, "disable fallback to traditional mode")
 	rootCmd.Flags().BoolVar(&noAIRecovery, "no-ai-recovery", false, "disable AI-powered recovery")
-	
+
 	// AI Recovery configuration flags
 	rootCmd.Flags().IntVar(&maxRecoveryAttempts, "max-recovery-attempts", 3, "maximum number of recovery attempts per command")
 	rootCmd.Flags().StringVar(&autoApproveRisk, "auto-approve-risk", "low", "auto-approve recovery steps up to this risk level (low/medium/high/critical)")
-	
+
 	// Update help text to include recovery examples
 	rootCmd.Long = rootCmd.Long + `
 
@@ -165,7 +165,7 @@ func runProject(cmd *cobra.Command, args []string) {
 
 	// If no args, show help
 	if len(args) == 0 {
-		cmd.Help()
+		_ = cmd.Help()
 		return
 	}
 
@@ -184,14 +184,14 @@ func runProject(cmd *cobra.Command, args []string) {
 // buildFlagsMap converts CLI flags to a configuration map
 func buildFlagsMap() map[string]interface{} {
 	flags := make(map[string]interface{})
-	
+
 	// Always include mode flag if set (flags override config)
 	// Note: Cobra sets default to "auto", so we include it to ensure
 	// flag values override config values even when they match defaults
 	if mode != "" {
 		flags["default-mode"] = mode
 	}
-	
+
 	// AI-first flags
 	if aiMode != "" {
 		flags["ai-first-mode"] = aiMode
@@ -205,7 +205,7 @@ func buildFlagsMap() map[string]interface{} {
 	if noAIRecovery {
 		flags["enable-auto-recovery"] = false
 	}
-	
+
 	// AI Recovery configuration flags
 	if maxRecoveryAttempts > 0 {
 		flags["max-recovery-attempts"] = maxRecoveryAttempts
@@ -233,7 +233,7 @@ func buildFlagsMap() map[string]interface{} {
 	if sandboxTimeout != "" {
 		flags["sandbox-timeout"] = sandboxTimeout
 	}
-	
+
 	return flags
 }
 
@@ -241,7 +241,7 @@ func buildFlagsMap() map[string]interface{} {
 func runTUI() {
 	// Build flags map from CLI flags
 	flags := buildFlagsMap()
-	
+
 	// Load configuration with flags
 	cfgManager, err := config.NewWithFlags(flags)
 	if err != nil {
@@ -360,7 +360,7 @@ func runTUIWithProject(githubURL string) {
 func runBasicCLI(githubURL string) {
 	// Build flags map from CLI flags
 	flags := buildFlagsMap()
-	
+
 	// Load configuration with flags
 	cfgManager, err := config.NewWithFlags(flags)
 	if err != nil {
@@ -428,14 +428,14 @@ func runBasicCLI(githubURL string) {
 			emoji string
 			title string
 		}{
-			"parsing":      {1, "📋", "Parsing GitHub URL"},
-			"cloning":      {2, "📦", "Cloning repository"},
-			"scanning":     {3, "🛡️", "Security scanning"},
-			"analyzing":    {4, "🔍", "Analyzing project"},
-			"ai_analysis":  {5, "🤖", "AI-powered analysis"},
-			"installing":   {6, "⚙️", "Setting up project"},
-			"executing":    {6, "⚙️", "Setting up project"}, // executing is part of installing
-			"ready":        {7, "✅", "Project ready"},
+			"parsing":     {1, "📋", "Parsing GitHub URL"},
+			"cloning":     {2, "📦", "Cloning repository"},
+			"scanning":    {3, "🛡️", "Security scanning"},
+			"analyzing":   {4, "🔍", "Analyzing project"},
+			"ai_analysis": {5, "🤖", "AI-powered analysis"},
+			"installing":  {6, "⚙️", "Setting up project"},
+			"executing":   {6, "⚙️", "Setting up project"}, // executing is part of installing
+			"ready":       {7, "✅", "Project ready"},
 		}
 
 		stepInfo, exists := stageToStep[stage]
@@ -449,7 +449,7 @@ func runBasicCLI(githubURL string) {
 				ui.CompleteStep() // Complete previous step
 			}
 			currentStage = stage
-			lastPercentage = -1 // Reset percentage tracking for new stage
+			lastPercentage = -1          // Reset percentage tracking for new stage
 			lastUpdateTime = time.Time{} // Reset time tracking
 			ui.StartStep(stepInfo.num, stepInfo.emoji, stepInfo.title, message)
 		}
@@ -470,12 +470,12 @@ func runBasicCLI(githubURL string) {
 				}
 			}
 			timeSinceLastUpdate := now.Sub(lastUpdateTime)
-			
+
 			shouldUpdateProgress := lastPercentage < 0 || // First update
 				percentDiff >= 5 || // Significant change
 				timeSinceLastUpdate >= 500*time.Millisecond || // Time threshold
 				percentage >= 100 // Complete
-			
+
 			if percentage >= 100 {
 				// Installation complete
 				ui.CompleteStep("Installation complete")
@@ -501,7 +501,7 @@ func runBasicCLI(githubURL string) {
 
 	// Run the project using Clean Architecture
 	ctx := context.Background()
-	
+
 	// Determine AI mode from config or flags
 	aiModeValue := "ai-first" // Default
 	if cfg.AIFirst != nil && cfg.AIFirst.PrimaryMode != "" {
@@ -510,7 +510,7 @@ func runBasicCLI(githubURL string) {
 	if aiMode != "" {
 		aiModeValue = aiMode
 	}
-	
+
 	aiConfidenceValue := 0.7 // Default
 	if cfg.AIFirst != nil && cfg.AIFirst.ConfidenceThreshold > 0 {
 		aiConfidenceValue = cfg.AIFirst.ConfidenceThreshold
@@ -518,7 +518,7 @@ func runBasicCLI(githubURL string) {
 	if aiConfidence > 0 {
 		aiConfidenceValue = aiConfidence
 	}
-	
+
 	noFallbackValue := false
 	if cfg.AIFirst != nil {
 		noFallbackValue = !cfg.AIFirst.EnableFallback
@@ -526,7 +526,7 @@ func runBasicCLI(githubURL string) {
 	if noFallback {
 		noFallbackValue = true
 	}
-	
+
 	noAIRecoveryValue := false
 	if cfg.AIFirst != nil {
 		noAIRecoveryValue = !cfg.AIFirst.EnableAutoRecovery
@@ -534,7 +534,7 @@ func runBasicCLI(githubURL string) {
 	if noAIRecovery {
 		noAIRecoveryValue = true
 	}
-	
+
 	err = cliController.RunProjectWithAIOptions(ctx, githubURL, executionMode, cfg.WorkspaceDir, force, aiModeValue, aiConfidenceValue, noFallbackValue, noAIRecoveryValue)
 	if err != nil {
 		ui.FailStep(err.Error())
