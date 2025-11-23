@@ -1,14 +1,31 @@
 import Stripe from 'stripe'
 
-// Only initialize Stripe server-side
-let stripe: Stripe | null = null
-if (typeof window === 'undefined') {
-  stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: '2025-08-27.basil',
-    typescript: true,
-  })
+// Lazy initialize Stripe server-side to avoid build-time errors
+let stripeInstance: Stripe | null = null
+
+export function getStripeServer(): Stripe | null {
+  if (typeof window !== 'undefined') return null
+
+  if (!stripeInstance && process.env.STRIPE_SECRET_KEY) {
+    stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-08-27.basil',
+      typescript: true,
+    })
+  }
+
+  return stripeInstance
 }
-export { stripe }
+
+// Export for backwards compatibility - lazy getter
+export const stripe = new Proxy({} as Stripe, {
+  get(_, prop) {
+    const instance = getStripeServer()
+    if (!instance) {
+      throw new Error('Stripe not initialized - STRIPE_SECRET_KEY may be missing')
+    }
+    return (instance as any)[prop]
+  }
+})
 
 // For client-side usage
 export const getStripe = () => {

@@ -1,0 +1,93 @@
+# GLive Installer for Windows
+# Usage: irm https://raw.githubusercontent.com/yasinhessnawi1/glive/main/install.ps1 | iex
+
+$ErrorActionPreference = "Stop"
+
+$Repo = "yasinhessnawi1/glive"
+$BinaryName = "glive.exe"
+$InstallDir = "$env:LOCALAPPDATA\glive\bin"
+
+Write-Host "Installing GLive..." -ForegroundColor Green
+
+# Create install directory
+if (-not (Test-Path $InstallDir)) {
+    New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
+}
+
+# Detect architecture
+$Arch = if ([Environment]::Is64BitOperatingSystem) { "amd64" } else { "386" }
+
+Write-Host "Detected: windows/$Arch"
+
+# Get latest release
+Write-Host "Fetching latest release..."
+try {
+    $Release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -UseBasicParsing
+    $LatestVersion = $Release.tag_name
+    Write-Host "Latest version: $LatestVersion"
+
+    $VersionNoV = $LatestVersion.TrimStart('v')
+    $DownloadUrl = "https://github.com/$Repo/releases/download/$LatestVersion/glive_${VersionNoV}_windows_${Arch}.zip"
+
+    Write-Host "Downloading from: $DownloadUrl"
+
+    $TempDir = New-TemporaryFile | ForEach-Object { Remove-Item $_; New-Item -ItemType Directory -Path $_ }
+    $ZipPath = Join-Path $TempDir "glive.zip"
+
+    Invoke-WebRequest -Uri $DownloadUrl -OutFile $ZipPath -UseBasicParsing
+
+    # Extract
+    Expand-Archive -Path $ZipPath -DestinationPath $TempDir -Force
+
+    # Move binary
+    $ExtractedBinary = Get-ChildItem -Path $TempDir -Recurse -Filter "glive.exe" | Select-Object -First 1
+    if ($ExtractedBinary) {
+        Move-Item -Path $ExtractedBinary.FullName -Destination (Join-Path $InstallDir $BinaryName) -Force
+    } else {
+        throw "Binary not found in archive"
+    }
+
+    # Cleanup
+    Remove-Item -Path $TempDir -Recurse -Force
+}
+catch {
+    Write-Host "No releases found or download failed. Building from source..." -ForegroundColor Yellow
+
+    # Check if Go is installed
+    if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
+        Write-Host "Go is not installed. Please install Go from https://go.dev/dl/" -ForegroundColor Red
+        exit 1
+    }
+
+    # Clone and build
+    $TempDir = New-TemporaryFile | ForEach-Object { Remove-Item $_; New-Item -ItemType Directory -Path $_ }
+    Push-Location $TempDir
+
+    git clone --depth 1 "https://github.com/$Repo.git"
+    Set-Location "glive\cmd\glive"
+    go build -o $BinaryName
+
+    Move-Item -Path $BinaryName -Destination (Join-Path $InstallDir $BinaryName) -Force
+
+    Pop-Location
+    Remove-Item -Path $TempDir -Recurse -Force
+}
+
+# Add to PATH if not already there
+$CurrentPath = [Environment]::GetEnvironmentVariable("Path", "User")
+if ($CurrentPath -notlike "*$InstallDir*") {
+    Write-Host "Adding $InstallDir to PATH..." -ForegroundColor Yellow
+    [Environment]::SetEnvironmentVariable("Path", "$CurrentPath;$InstallDir", "User")
+    $env:Path = "$env:Path;$InstallDir"
+}
+
+# Verify installation
+if (Test-Path (Join-Path $InstallDir $BinaryName)) {
+    Write-Host ""
+    Write-Host "GLive installed successfully!" -ForegroundColor Green
+    Write-Host "Location: $InstallDir\$BinaryName"
+    Write-Host ""
+    Write-Host "Please restart your terminal, then run 'glive --help' to get started." -ForegroundColor Cyan
+} else {
+    Write-Host "Installation may have failed. Please check manually." -ForegroundColor Red
+}

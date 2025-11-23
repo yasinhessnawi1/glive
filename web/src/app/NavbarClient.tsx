@@ -31,7 +31,7 @@ export default function Navbar() {
           <Link href="/docs" className="text-sm font-medium transition-colors hover:text-primary">
             Docs
           </Link>
-          <a href="https://github.com/yasinhessnawi1/GLive" className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-1" target="_blank" rel="noopener noreferrer">
+          <a href="https://github.com/yasinhessnawi1/glive" className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-1" target="_blank" rel="noopener noreferrer">
             <Github className="h-4 w-4" />GitHub
           </a>
           <Link href="/dashboard">

@@ -1,6 +1,6 @@
 # Integration Implementation Queries for AIaaS Boilerplate
 
-[GitHub Repository](https://github.com/yasinhessnawi1/GLive)
+[GitHub Repository](https://github.com/yasinhessnawi1/glive)
 
 ## Overview
 This document provides step-by-step implementation queries and patterns for integrating UX-enhancing services with the current AIaaS stack (Next.js 15, Clerk, Supabase, Stripe, CopilotKit).

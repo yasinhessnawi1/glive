@@ -35,27 +35,41 @@ GitHub is filled with amazing projects, but getting them to run locally is often
 
 ### Installation
 
-#### Option 1: Using Go (CLI only) recomanded for quick setup
+#### Option 1: Quick Install (Recommended)
 ```bash
-# Install Go from https://go.dev/dl/ if not already installed
-go install github.com/yasinhessnawi1/GLive/cmd/GLive@latest
+# Linux/macOS
+curl -sSL https://raw.githubusercontent.com/yasinhessnawi1/glive/main/install.sh | bash
+
+# Windows (PowerShell)
+irm https://raw.githubusercontent.com/yasinhessnawi1/glive/main/install.ps1 | iex
+
+# Windows (CMD)
+curl -sSL https://raw.githubusercontent.com/yasinhessnawi1/glive/main/install.bat -o install.bat && install.bat
 ```
 
-#### Option 2: From Source (Full stack)
+#### Option 2: From Source
 ```bash
 # Clone the repository
-git clone https://github.com/yasinhessnawi1/GLive.git
-cd GLive
+git clone https://github.com/yasinhessnawi1/glive.git
+cd glive
 
 # Build CLI
 cd cmd/glive
 go build -o glive
-sudo mv glive /usr/local/bin/  # or add to PATH
+
+# Linux/macOS: Move to PATH
+sudo mv glive /usr/local/bin/
+
+# Windows: Add to PATH or move to a directory in PATH
+# move glive.exe C:\Users\YourUser\bin\
 
 # Build and run agent (optional, for web dashboard)
 cd ../../pkg/agent
 go run main.go
 ```
+
+#### Option 3: Download Binary
+Download the latest release from [GitHub Releases](https://github.com/yasinhessnawi1/glive/releases)
 
 ### Configuration
 
@@ -225,9 +239,9 @@ MIT License - see [LICENSE](./LICENSE) for details
 
 ## 📧 Support
 
-- 🐛 [Report a bug](https://github.com/yourusername/GLive/issues)
-- 💡 [Request a feature](https://github.com/yourusername/GLive/issues)
-- 💬 [Discussions](https://github.com/yourusername/GLive/discussions)
+- 🐛 [Report a bug](https://github.com/yasinhessnawi1/glive/issues)
+- 💡 [Request a feature](https://github.com/yasinhessnawi1/glive/issues)
+- 💬 [Discussions](https://github.com/yasinhessnawi1/glive/discussions)
 
 ---
 
