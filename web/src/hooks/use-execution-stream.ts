@@ -6,6 +6,7 @@ import type { ExecutionEvent } from '@/types/glive';
 export function useExecutionStream(projectId: string | null) {
   const [events, setEvents] = useState<ExecutionEvent[]>([]);
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
+  const [metrics, setMetrics] = useState({ reconnectAttempts: 0, messageCount: 0 });
   const wsRef = useRef<GliveWebSocket | null>(null);
 
   useEffect(() => {
@@ -24,6 +25,11 @@ export function useExecutionStream(projectId: string | null) {
     // Connection state handler
     ws.onConnectionStateChange((state) => {
       setConnectionState(state);
+    });
+
+    // Metrics handler
+    ws.onMetricsChange((newMetrics) => {
+      setMetrics(newMetrics);
     });
 
     // Command started
@@ -137,6 +143,7 @@ export function useExecutionStream(projectId: string | null) {
   return {
     events,
     connectionState,
+    metrics,
     isConnected: connectionState === 'connected',
     clearEvents,
   };

@@ -13,7 +13,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.24'
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v4
 
@@ -26,9 +26,18 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
-      - run: go test -race -coverprofile=coverage.out ./...
+          go-version: '1.24'
+      - name: Run tests in workspace modules
+        run: |
+          for dir in cmd/glive pkg/agent pkg/core pkg/domain pkg/infrastructure pkg/interface pkg/usecase tests; do
+            echo "Testing $dir"
+            cd $dir
+            go test -race -coverprofile=coverage.out ./...
+            cd -
+          done
+        shell: bash
       - uses: codecov/codecov-action@v4
+        if: matrix.os == 'ubuntu-latest'
 
   security:
     runs-on: ubuntu-latest
@@ -41,7 +50,13 @@ jobs:
       - name: Run govulncheck
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./...
+          for dir in cmd/glive pkg/agent pkg/core pkg/domain pkg/infrastructure pkg/interface pkg/usecase tests; do
+            echo "Checking $dir"
+            cd $dir
+            govulncheck ./...
+            cd -
+          done
+        shell: bash
 
   build:
     needs: [lint, test, security]
@@ -50,5 +65,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.24'
       - run: go build ./cmd/glive

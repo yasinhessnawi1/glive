@@ -62,8 +62,12 @@ func (h *Handler) CreateProject(c *fiber.Ctx) error {
 		return api.InternalError(c, "STATE_SAVE_FAILED", "Failed to save project state")
 	}
 
-	// Start execution in background
+	// Start execution in background with delay
+	// Delay allows frontend to redirect to execution page and connect WebSocket
 	go func() {
+		// Wait 3 seconds for frontend to navigate and connect
+		time.Sleep(3 * time.Second)
+
 		ctx := context.Background()
 		// We ignore the returned project since we already have it, but we should handle errors
 		_, err := h.Orchestrator.RunProject(ctx, projectID, req.GitHubURL, mode, req.ForceExecution, func(update core.ProgressUpdate) {

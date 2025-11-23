@@ -424,6 +424,46 @@ func (a *Analyzer) generateCommands(result *AnalysisResult, detectedTypes []Proj
 			})
 			commandID++
 
+			// Add run command
+			var runCmd string
+			switch pkgManager {
+			case "yarn":
+				runCmd = "yarn dev"
+			case "pnpm":
+				runCmd = "pnpm dev"
+			case "bun":
+				runCmd = "bun dev"
+			default:
+				runCmd = "npm run dev"
+			}
+
+			// Check if dev script exists, otherwise try start
+			if a.hasScript("dev") {
+				// runCmd is already set to dev
+			} else if a.hasScript("start") {
+				switch pkgManager {
+				case "yarn":
+					runCmd = "yarn start"
+				case "pnpm":
+					runCmd = "pnpm start"
+				case "bun":
+					runCmd = "bun start"
+				default:
+					runCmd = "npm start"
+				}
+			}
+
+			result.Commands = append(result.Commands, Command{
+				ID:          fmt.Sprintf("cmd-%d", commandID),
+				Description: "Start application",
+				Command:     runCmd,
+				WorkingDir:  a.projectPath,
+				Stage:       "run",
+				Required:    true,
+				Status:      "pending",
+			})
+			commandID++
+
 		case ProjectTypePython:
 			// Determine which Python package manager to use
 			pkgManager, installCmd := a.detectPythonPackageManager()
@@ -434,6 +474,23 @@ func (a *Analyzer) generateCommands(result *AnalysisResult, detectedTypes []Proj
 				Command:     installCmd,
 				WorkingDir:  a.projectPath,
 				Stage:       "setup",
+				Required:    true,
+				Status:      "pending",
+			})
+			commandID++
+
+			// Add run command
+			runCmd := "python app.py" // Default
+			if len(result.EntryPoints) > 0 {
+				runCmd = fmt.Sprintf("python %s", result.EntryPoints[0])
+			}
+
+			result.Commands = append(result.Commands, Command{
+				ID:          fmt.Sprintf("cmd-%d", commandID),
+				Description: "Start application",
+				Command:     runCmd,
+				WorkingDir:  a.projectPath,
+				Stage:       "run",
 				Required:    true,
 				Status:      "pending",
 			})
@@ -451,6 +508,23 @@ func (a *Analyzer) generateCommands(result *AnalysisResult, detectedTypes []Proj
 			})
 			commandID++
 
+			// Add run command
+			runCmd := "go run ."
+			if len(result.EntryPoints) > 0 {
+				runCmd = fmt.Sprintf("go run %s", result.EntryPoints[0])
+			}
+
+			result.Commands = append(result.Commands, Command{
+				ID:          fmt.Sprintf("cmd-%d", commandID),
+				Description: "Start application",
+				Command:     runCmd,
+				WorkingDir:  a.projectPath,
+				Stage:       "run",
+				Required:    true,
+				Status:      "pending",
+			})
+			commandID++
+
 		case ProjectTypeRust:
 			result.Commands = append(result.Commands, Command{
 				ID:          fmt.Sprintf("cmd-%d", commandID),
@@ -458,6 +532,17 @@ func (a *Analyzer) generateCommands(result *AnalysisResult, detectedTypes []Proj
 				Command:     "cargo build",
 				WorkingDir:  a.projectPath,
 				Stage:       "setup",
+				Required:    true,
+				Status:      "pending",
+			})
+			commandID++
+
+			result.Commands = append(result.Commands, Command{
+				ID:          fmt.Sprintf("cmd-%d", commandID),
+				Description: "Start application",
+				Command:     "cargo run",
+				WorkingDir:  a.projectPath,
+				Stage:       "run",
 				Required:    true,
 				Status:      "pending",
 			})
@@ -476,13 +561,35 @@ func (a *Analyzer) generateCommands(result *AnalysisResult, detectedTypes []Proj
 					Status:      "pending",
 				})
 				commandID++
-			} else if a.fileExists("build.gradle") || a.fileExists("build.gradle.kts") {
 				result.Commands = append(result.Commands, Command{
 					ID:          fmt.Sprintf("cmd-%d", commandID),
 					Description: "Download Gradle dependencies",
 					Command:     "gradle dependencies",
 					WorkingDir:  a.projectPath,
 					Stage:       "setup",
+					Required:    true,
+					Status:      "pending",
+				})
+				commandID++
+
+				result.Commands = append(result.Commands, Command{
+					ID:          fmt.Sprintf("cmd-%d", commandID),
+					Description: "Start application",
+					Command:     "gradle run",
+					WorkingDir:  a.projectPath,
+					Stage:       "run",
+					Required:    true,
+					Status:      "pending",
+				})
+				commandID++
+			} else if a.fileExists("pom.xml") {
+				// Add Maven run command if not already added
+				result.Commands = append(result.Commands, Command{
+					ID:          fmt.Sprintf("cmd-%d", commandID),
+					Description: "Start application",
+					Command:     "mvn spring-boot:run",
+					WorkingDir:  a.projectPath,
+					Stage:       "run",
 					Required:    true,
 					Status:      "pending",
 				})
@@ -808,4 +915,28 @@ func (a *Analyzer) parseCargoToml(result *AnalysisResult) {
 			}
 		}
 	}
+}
+
+// hasScript checks if a script exists in package.json
+func (a *Analyzer) hasScript(scriptName string) bool {
+	if !a.fileExists("package.json") {
+		return false
+	}
+
+	data, err := os.ReadFile(filepath.Join(a.projectPath, "package.json"))
+	if err != nil {
+		return false
+	}
+
+	var pkg map[string]interface{}
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		return false
+	}
+
+	if scripts, ok := pkg["scripts"].(map[string]interface{}); ok {
+		_, exists := scripts[scriptName]
+		return exists
+	}
+
+	return false
 }

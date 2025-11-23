@@ -2,6 +2,7 @@ package ai
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -20,6 +21,7 @@ type Client struct {
 	provider   string
 	endpoint   string
 	httpClient *http.Client
+	classifier *ErrorClassifier
 }
 
 // NewClient creates a new AI client
@@ -33,6 +35,7 @@ func NewClient(apiKey, provider, endpoint string) *Client {
 		provider:   provider,
 		endpoint:   endpoint,
 		httpClient: securehttp.OptimizedClient(),
+		classifier: NewErrorClassifier(),
 	}
 }
 
@@ -87,6 +90,11 @@ type ChatResponse struct {
 
 // Chat sends a chat request to the AI API
 func (c *Client) Chat(messages []Message) (string, error) {
+	return c.ChatWithContext(context.Background(), messages)
+}
+
+// ChatWithContext sends a chat request to the AI API with context support
+func (c *Client) ChatWithContext(ctx context.Context, messages []Message) (string, error) {
 	reqBody := ChatRequest{
 		Model:       c.getModel(),
 		Messages:    messages,
@@ -99,7 +107,7 @@ func (c *Client) Chat(messages []Message) (string, error) {
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", c.endpoint, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", c.endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
@@ -109,6 +117,9 @@ func (c *Client) Chat(messages []Message) (string, error) {
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return "", fmt.Errorf("AI analysis timed out - the project may be too large or complex")
+		}
 		return "", fmt.Errorf("network error - please check your internet connection: %w", err)
 	}
 	defer resp.Body.Close()
@@ -130,6 +141,25 @@ func (c *Client) Chat(messages []Message) (string, error) {
 	}
 
 	return chatResp.Choices[0].Message.Content, nil
+}
+
+// AnalyzeProject uses AI to analyze a project
+// Returns the raw JSON string which can be unmarshaled by the caller
+func (c *Client) AnalyzeProject(ctx context.Context, projectPath string, readmeContent string, fileList []string) (string, error) {
+	prompt := c.buildAnalysisPrompt(projectPath, readmeContent, fileList)
+
+	messages := []Message{
+		{
+			Role:    "system",
+			Content: "You are an expert software architect and DevOps engineer. Your goal is to analyze projects and provide precise setup instructions.",
+		},
+		{
+			Role:    "user",
+			Content: prompt,
+		},
+	}
+
+	return c.ChatWithContext(ctx, messages)
 }
 
 // handleAPIError provides user-friendly error messages based on status code
@@ -172,37 +202,6 @@ func (c *Client) getModel() string {
 	default:
 		return "deepseek-chat"
 	}
-}
-
-// AnalyzeProject uses AI to analyze a project
-// Returns the raw JSON string which can be unmarshaled by the caller
-func (c *Client) AnalyzeProject(projectPath string, readmeContent string, fileList []string) (string, error) {
-	prompt := c.buildAnalysisPrompt(projectPath, readmeContent, fileList)
-
-	messages := []Message{
-		{
-			Role:    "system",
-			Content: "You are an expert software engineer analyzing GitHub projects. Provide detailed, accurate analysis in JSON format.",
-		},
-		{
-			Role:    "user",
-			Content: prompt,
-		},
-	}
-
-	response, err := c.Chat(messages)
-	if err != nil {
-		return "", fmt.Errorf("AI analysis failed: %w", err)
-	}
-
-	// Validate the response
-	validator := NewAIResponseValidator()
-	_, validationErr := validator.ValidateAnalysis(response)
-	if validationErr != nil {
-		return "", fmt.Errorf("AI response validation failed: %w", validationErr)
-	}
-
-	return response, nil
 }
 
 // buildAnalysisPrompt creates the analysis prompt with full context
@@ -427,16 +426,18 @@ Your explanations should be:
 
 // AutoFixResult contains the result of an auto-fix attempt
 type AutoFixResult struct {
-	CanFix         bool           `json:"can_fix"`
-	FixType        string         `json:"fix_type"`
-	FixedCommand   string         `json:"fixed_command"`
-	Explanation    string         `json:"explanation"`
-	Confidence     string         `json:"confidence"`
-	Analysis       []string       `json:"step_by_step_analysis"`
-	Alternatives   []string       `json:"if_this_fails_try"`
-	FilesToCreate  []FileToCreate `json:"files_to_create"`
-	SkipIfOptional bool           `json:"skip_if_optional"`
-	SkipReason     string         `json:"skip_reason"`
+	CanFix               bool           `json:"can_fix"`
+	FixType              string         `json:"fix_type"`
+	FixedCommand         string         `json:"fixed_command"`
+	Explanation          string         `json:"explanation"`
+	Confidence           string         `json:"confidence"`
+	Analysis             []string       `json:"step_by_step_analysis"`
+	Alternatives         []string       `json:"if_this_fails_try"`
+	FilesToCreate        []FileToCreate `json:"files_to_create"`
+	ManualInstructions   []string       `json:"manual_instructions"`
+	IsUserActionRequired bool           `json:"is_user_action_required"`
+	SkipIfOptional       bool           `json:"skip_if_optional"`
+	SkipReason           string         `json:"skip_reason"`
 }
 
 // FileToCreate represents a file that needs to be created as part of a fix
@@ -447,12 +448,57 @@ type FileToCreate struct {
 
 // AutoFixError attempts to automatically fix a command error
 // Returns: (fixed_command, explanation, can_auto_fix, error)
+// AutoFixError attempts to automatically fix a command error using the Agent
+// Returns: (fixed_command, explanation, can_auto_fix, error)
 func (c *Client) AutoFixError(command string, output string, errorMsg string, workingDir string) (string, string, bool, error) {
-	result, err := c.AutoFixErrorWithAttempts(command, output, errorMsg, workingDir, 1, nil)
+	// Use the new Agent for auto-fixing
+	agent := NewAgent(c, workingDir)
+
+	goal := fmt.Sprintf(`Fix this command failure:
+Command: %s
+Error Output: %s
+Error Message: %s
+
+Investigate why it failed and fix it. If you cannot fix it automatically (e.g., missing API key), provide manual instructions.`, command, output, errorMsg)
+
+	result, err := agent.Run(context.Background(), goal)
 	if err != nil {
 		return "", "", false, err
 	}
-	return result.FixedCommand, result.Explanation, result.CanFix, nil
+
+	if !result.Success {
+		// If agent failed but provided manual instructions, return them in the explanation
+		if len(result.ManualInstructions) > 0 {
+			explanation := "I cannot fix this automatically. Please follow these steps:\n"
+			for i, step := range result.ManualInstructions {
+				explanation += fmt.Sprintf("%d. %s\n", i+1, step)
+			}
+			return "", explanation, false, nil
+		}
+		return "", result.Message, false, nil
+	}
+
+	// If success, the message should contain the fix details
+	// Note: The agent might have already applied the fix via tools (e.g. edit_file)
+	// If the fix requires re-running the command, we return the command.
+	// For now, we'll assume if success is true, the user should retry the original command or the agent provided a new one.
+	// To keep compatibility with the existing interface, we might need to parse the agent's message for a command.
+	// But since the agent can run commands itself, maybe we just return the original command to retry?
+	// Let's assume the agent fixed the environment/files, so retrying the original command is the way to go.
+
+	return command, result.Message, true, nil
+}
+
+// AutoFixWithStrategies attempts to fix an error using recovery strategies
+// This method exists for compatibility with the executor.AIClient interface
+func (c *Client) AutoFixWithStrategies(command, output, errorMsg, workingDir string) ([]RecoveryStrategy, *ErrorContext, error) {
+	// Classify the error
+	errorCtx := c.classifier.Classify(command, output, errorMsg)
+
+	// Get applicable strategies
+	strategies := SelectStrategies(errorCtx)
+
+	return strategies, errorCtx, nil
 }
 
 // AutoFixErrorWithAttempts attempts to fix with tracking of previous attempts

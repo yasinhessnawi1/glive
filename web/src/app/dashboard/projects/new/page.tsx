@@ -46,8 +46,8 @@ export default function NewProjectPage() {
     if (project) {
       setCreatedProject(project.id);
       setTimeout(() => {
-        router.push(`/dashboard/projects/${project.id}`);
-      }, 2000);
+        router.push(`/dashboard/projects/${project.id}/execution`);
+      }, 1500);
     }
   };
 
@@ -103,8 +103,8 @@ export default function NewProjectPage() {
                 <div className="flex flex-col items-center flex-1">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= s
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-slate-200 dark:bg-slate-700 text-slate-600'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-200 dark:bg-slate-700 text-slate-600'
                       }`}
                   >
                     {step > s ? <CheckCircle2 className="h-5 w-5" /> : s}

@@ -49,7 +49,7 @@ func NewCommandValidator() *CommandValidator {
 			// Shell (restricted)
 			"powershell": true, "pwsh": true, "cmd": true, "bash": true, "sh": true, "zsh": true,
 			"source": true, // for sourcing scripts
-			"copy": true, "move": true, "del": true, "rm": true, "rmdir": true, "mkdir": true,
+			"copy":   true, "move": true, "del": true, "rm": true, "rmdir": true, "mkdir": true,
 			"chdir": true, "cd": true, "pwd": true, "ls": true, "dir": true, "tree": true,
 			"cat": true, "type": true, "echo": true, "pause": true, "cls": true, "clear": true,
 			"exit": true, "help": true, "man": true, "info": true, "which": true, "where": true,
@@ -58,6 +58,8 @@ func NewCommandValidator() *CommandValidator {
 			"choco": true, "winget": true, "scoop": true,
 			// Common scripts/wrappers
 			"setup": true, "install": true, "build": true, "start": true, "run": true, "test": true,
+			// Environment
+			"set": true, "export": true, "env": true, "printenv": true,
 		},
 		blockedPatterns: []*regexp.Regexp{
 			// Only block truly dangerous patterns - allow normal command chaining
@@ -68,7 +70,7 @@ func NewCommandValidator() *CommandValidator {
 			regexp.MustCompile(`(?i)(nc|netcat)\s+(-[a-z]+\s+)*\d`), // nc with port numbers
 			regexp.MustCompile(`(?i)telnet\s+\S+\s+\d`),             // telnet host port
 			// Dangerous file operations on system roots
-			regexp.MustCompile(`(?i)(rm|del)\s+(-rf?\s+)?[/\\]$`),         // rm / or rm \
+			regexp.MustCompile(`(?i)(rm|del)\s+(-rf?\s+)?[/\\]$`),                          // rm / or rm \
 			regexp.MustCompile(`(?i)(rm|del)\s+(-rf?\s+)?[/\\](etc|usr|Windows|System32)`), // system dirs
 			regexp.MustCompile(`(?i)format\s+[a-zA-Z]:`),
 			regexp.MustCompile(`(?i)diskpart`),

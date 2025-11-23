@@ -291,7 +291,7 @@ func (uc *SetupProjectUseCase) Execute(ctx context.Context, input SetupProjectIn
 		go func() {
 			readmeContent := uc.readReadme(localPath.String())
 			fileList := uc.getFileList(localPath.String())
-			response, err := aiClient.AnalyzeProject(localPath.String(), readmeContent, fileList)
+			response, err := aiClient.AnalyzeProject(ctx, localPath.String(), readmeContent, fileList)
 			aiResultChan <- aiResult{response: response, err: err}
 		}()
 	}
@@ -950,7 +950,7 @@ func (uc *SetupProjectUseCase) resumeProject(ctx context.Context, project *entit
 			readmeContent := uc.readReadme(localPath.String())
 			fileList := uc.getFileList(localPath.String())
 
-			aiResponse, err := aiClient.AnalyzeProject(localPath.String(), readmeContent, fileList)
+			aiResponse, err := aiClient.AnalyzeProject(ctx, localPath.String(), readmeContent, fileList)
 			if err != nil {
 				uc.log(fmt.Sprintf("   ⚠️  AI analysis failed: %v\n", err))
 				uc.log("   ℹ️  Falling back to basic analysis - the project will still work!\n\n")

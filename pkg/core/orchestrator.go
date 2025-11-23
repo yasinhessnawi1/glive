@@ -11,25 +11,27 @@ import (
 	"sync"
 	"time"
 
-	"github.com/glive/core/ai"
 	"github.com/glive/core/analyzer"
 	"github.com/glive/core/executor"
 	"github.com/glive/core/repo"
 	"github.com/glive/core/scanner"
 	"github.com/glive/core/state"
 	"github.com/glive/core/types"
+	"github.com/glive/infrastructure/ai"
 )
 
 // Orchestrator coordinates the entire project execution flow
 type Orchestrator struct {
-	config          *Config
-	stateManager    *state.Manager
-	aiClient        *ai.Client
-	output          io.Writer
-	runningProjects map[string]context.CancelFunc
-	projectPorts    map[string]int // Track allocated ports per project
-	nextPort        int            // Next available port
-	mu              sync.Mutex
+	config           *Config
+	stateManager     *state.Manager
+	aiClient         *ai.Client
+	output           io.Writer
+	runningProjects  map[string]context.CancelFunc
+	projectPorts     map[string]int // Track allocated ports per project
+	nextPort         int            // Next available port
+	mu               sync.Mutex
+	currentCallback  ProgressCallback // Current progress callback for streaming logs
+	currentProjectID string           // Current project ID for log streaming
 }
 
 // NewOrchestrator creates a new orchestrator
@@ -71,11 +73,31 @@ func (o *Orchestrator) RunProject(ctx context.Context, projectID, githubURL stri
 		projectID = generateProjectID()
 	}
 
+	// Set callback for log streaming
+	o.mu.Lock()
+	o.currentCallback = callback
+	o.currentProjectID = projectID
+	o.mu.Unlock()
+
+	// Clear callback when done
+	defer func() {
+		o.mu.Lock()
+		o.currentCallback = nil
+		o.currentProjectID = ""
+		o.mu.Unlock()
+	}()
+
 	o.log("🚀 GLive - GitHub to Live\n")
 	o.log("=" + repeatString("=", 50) + "\n\n")
 
+	// Helper function to both log to console AND stream through WebSocket
+	logAndStream := func(message string) {
+		o.log(message)
+		o.sendProgress(callback, projectID, "running", message, 0)
+	}
+
 	// Step 1: Parse GitHub URL
-	o.log("📋 Step 1: Parsing GitHub URL...\n")
+	logAndStream("📋 Step 1: Parsing GitHub URL...\n")
 	o.sendProgress(callback, projectID, "parsing", "Parsing GitHub URL", 10)
 
 	repository, err := repo.ParseGitHubURL(githubURL)
@@ -83,8 +105,8 @@ func (o *Orchestrator) RunProject(ctx context.Context, projectID, githubURL stri
 		return nil, fmt.Errorf("invalid GitHub URL: %w", err)
 	}
 
-	o.log(fmt.Sprintf("   ✓ Repository: %s/%s\n", repository.Owner, repository.Name))
-	o.log(fmt.Sprintf("   ✓ URL: %s\n\n", repository.URL))
+	logAndStream(fmt.Sprintf("   ✓ Repository: %s/%s\n", repository.Owner, repository.Name))
+	logAndStream(fmt.Sprintf("   ✓ URL: %s\n\n", repository.URL))
 
 	// Create project
 	project := &Project{
@@ -190,10 +212,21 @@ func (o *Orchestrator) RunProject(ctx context.Context, projectID, githubURL stri
 		// Get file list
 		fileList := o.getFileList(project.LocalPath)
 
+		// Create a context with timeout for AI analysis (2 minutes)
+		aiCtx, aiCancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer aiCancel()
+
+		o.log("   ⏳ Analyzing project with AI (this may take up to 2 minutes)...\n")
+
 		// Use AI to enhance the analysis
-		aiResponse, err := o.aiClient.AnalyzeProject(project.LocalPath, readmeContent, fileList)
+		aiResponse, err := o.aiClient.AnalyzeProject(aiCtx, project.LocalPath, readmeContent, fileList)
 		if err != nil {
-			o.log(fmt.Sprintf("   ⚠️  AI analysis failed: %v\n", err))
+			// Check if it was a timeout
+			if aiCtx.Err() == context.DeadlineExceeded {
+				o.log("   ⚠️  AI analysis timed out after 2 minutes\n")
+			} else {
+				o.log(fmt.Sprintf("   ⚠️  AI analysis failed: %v\n", err))
+			}
 			o.log("   ℹ️  Falling back to basic analysis - the project will still work!\n\n")
 		} else {
 			o.log("   ✓ AI analysis completed\n")
@@ -223,7 +256,7 @@ func (o *Orchestrator) RunProject(ctx context.Context, projectID, githubURL stri
 	o.stateManager.SaveProject(project)
 
 	if len(analysis.Commands) > 0 {
-		exec := executor.New(project.LocalPath, mode, o.aiClient)
+		exec := executor.New(project.LocalPath, mode, nil) // TODO: Create adapter for infrastructure AI client
 
 		for i, cmd := range analysis.Commands {
 			percentage := 60 + (i * 30 / len(analysis.Commands))
@@ -274,8 +307,12 @@ func (o *Orchestrator) StartProject(ctx context.Context, projectID string, callb
 		return fmt.Errorf("failed to load project: %w", err)
 	}
 
-	// Check if already running
+	// Set callback for log streaming
 	o.mu.Lock()
+	o.currentCallback = callback
+	o.currentProjectID = projectID
+
+	// Check if already running
 	if _, exists := o.runningProjects[projectID]; exists {
 		o.mu.Unlock()
 		return fmt.Errorf("project is already running")
@@ -308,7 +345,7 @@ func (o *Orchestrator) StartProject(ctx context.Context, projectID string, callb
 			o.log("   ⚠️  Node modules not found, installing dependencies...\n")
 			o.sendProgress(callback, projectID, "installing", "Installing dependencies (auto-recovery)", 0)
 
-			exec := executor.New(project.LocalPath, ModeAuto, o.aiClient)
+			exec := executor.New(project.LocalPath, ModeAuto, nil) // TODO: Create adapter
 			for _, cmd := range analysis.Commands {
 				if cmd.Stage == "setup" {
 					o.log(fmt.Sprintf("   $ %s\n", cmd.Command))
@@ -375,7 +412,15 @@ func (o *Orchestrator) StartProject(ctx context.Context, projectID string, callb
 	go func() {
 		defer cancel() // Ensure context is cancelled on exit
 
-		exec := executor.New(project.LocalPath, ModeAuto, o.aiClient)
+		// Clear callback when goroutine exits
+		defer func() {
+			o.mu.Lock()
+			o.currentCallback = nil
+			o.currentProjectID = ""
+			o.mu.Unlock()
+		}()
+
+		exec := executor.New(project.LocalPath, ModeAuto, nil) // TODO: Create adapter
 
 		o.log(fmt.Sprintf("   $ %s\n", runCmd.Command))
 
@@ -447,9 +492,21 @@ func (o *Orchestrator) CleanupProject(projectID string) error {
 	return nil
 }
 
-// log writes to the output writer
+// log writes to the output writer and streams via WebSocket if callback is set
 func (o *Orchestrator) log(message string) {
 	fmt.Fprint(o.output, message)
+
+	// Also send through WebSocket callback if available
+	if o.currentCallback != nil && o.currentProjectID != "" {
+		// Send as a "log" stage progress update
+		o.currentCallback(ProgressUpdate{
+			ProjectID:  o.currentProjectID,
+			Stage:      "log",
+			Message:    message,
+			Percentage: 0,
+			Timestamp:  time.Now(),
+		})
+	}
 }
 
 // sendProgress sends a progress update

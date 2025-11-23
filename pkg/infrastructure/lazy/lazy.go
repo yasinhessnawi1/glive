@@ -1,6 +1,7 @@
 package lazy
 
 import (
+	"context"
 	"sync"
 
 	"github.com/glive/domain/errors"
@@ -37,7 +38,7 @@ type AIClientConfig struct {
 
 // AIClient interface matches container.AIClient to avoid circular imports
 type AIClient interface {
-	AnalyzeProject(projectPath string, readmeContent string, fileList []string) (string, error)
+	AnalyzeProject(ctx context.Context, projectPath string, readmeContent string, fileList []string) (string, error)
 	DebugError(command string, output string, errorMsg string) (string, error)
 	AutoFixError(command string, output string, errorMsg string, workingDir string) (string, string, bool, error)
 }
@@ -60,12 +61,12 @@ func NewLazyAIClient(config AIClientConfig) *LazyAIClient {
 }
 
 // AnalyzeProject analyzes a project using the AI client
-func (l *LazyAIClient) AnalyzeProject(projectPath string, readmeContent string, fileList []string) (string, error) {
+func (l *LazyAIClient) AnalyzeProject(ctx context.Context, projectPath string, readmeContent string, fileList []string) (string, error) {
 	client, err := l.client.Get()
 	if err != nil {
 		return "", err
 	}
-	return client.AnalyzeProject(projectPath, readmeContent, fileList)
+	return client.AnalyzeProject(ctx, projectPath, readmeContent, fileList)
 }
 
 // DebugError uses AI to debug an error
@@ -85,4 +86,3 @@ func (l *LazyAIClient) AutoFixError(command string, output string, errorMsg stri
 	}
 	return client.AutoFixError(command, output, errorMsg, workingDir)
 }
-

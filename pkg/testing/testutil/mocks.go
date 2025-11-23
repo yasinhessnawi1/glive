@@ -2,8 +2,9 @@ package testutil
 
 import (
 	"context"
-	"fmt"
 	"io"
+	"strings"
+	"testing"
 )
 
 // Logger interface for logging
@@ -17,10 +18,10 @@ type Logger interface {
 // NullLogger is a logger that discards all output
 type NullLogger struct{}
 
-func (n NullLogger) Info(msg string)                              {}
-func (n NullLogger) Error(msg string, err error)                  {}
-func (n NullLogger) Debug(msg string)                             {}
-func (n NullLogger) Warn(msg string, args ...interface{})        {}
+func (n NullLogger) Info(msg string)                      {}
+func (n NullLogger) Error(msg string, err error)          {}
+func (n NullLogger) Debug(msg string)                     {}
+func (n NullLogger) Warn(msg string, args ...interface{}) {}
 
 // MockWriter is a mock io.Writer for testing
 type MockWriter struct {
@@ -65,10 +66,11 @@ func (m *MockCloser) Close() error {
 }
 
 // MockContext is a mock context for testing
+// MockContext is a mock context for testing
 type MockContext struct {
 	context.Context
-	DoneCh chan struct{}
-	Err    error
+	DoneCh     chan struct{}
+	ContextErr error
 }
 
 func NewMockContext() *MockContext {
@@ -83,13 +85,13 @@ func (m *MockContext) Done() <-chan struct{} {
 }
 
 func (m *MockContext) Err() error {
-	return m.Err
+	return m.ContextErr
 }
 
 // Cancel cancels the mock context
 func (m *MockContext) Cancel() {
 	close(m.DoneCh)
-	m.Err = context.Canceled
+	m.ContextErr = context.Canceled
 }
 
 // MockError is a mock error for testing
@@ -181,5 +183,3 @@ func MustCreatePath(t *testing.T, pathStr string) interface{} {
 	// Will be implemented when we know the exact Path type
 	return nil
 }
-
-

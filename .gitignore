@@ -67,3 +67,4 @@ logs/
 *.tmp
 .cache/
 temp-boilerplate/
+.next

@@ -343,6 +343,46 @@ func (a *Analyzer) generateCommands(result *types.AnalysisResult, detectedTypes 
 			})
 			commandID++
 
+			// Add run command
+			runCmd = ""
+			switch pkgManager {
+			case "yarn":
+				runCmd = "yarn dev"
+			case "pnpm":
+				runCmd = "pnpm dev"
+			case "bun":
+				runCmd = "bun dev"
+			default:
+				runCmd = "npm run dev"
+			}
+
+			// Check if dev script exists, otherwise try start
+			if a.hasScript("dev") {
+				// runCmd is already set to dev
+			} else if a.hasScript("start") {
+				switch pkgManager {
+				case "yarn":
+					runCmd = "yarn start"
+				case "pnpm":
+					runCmd = "pnpm start"
+				case "bun":
+					runCmd = "bun start"
+				default:
+					runCmd = "npm start"
+				}
+			}
+
+			result.Commands = append(result.Commands, types.Command{
+				ID:          fmt.Sprintf("cmd-%d", commandID),
+				Description: "Start Application",
+				Command:     runCmd,
+				WorkingDir:  a.projectPath,
+				Stage:       "run",
+				Required:    false, // Not required for setup
+				Status:      types.CommandPending,
+			})
+			commandID++
+
 			// Check if start script exists (basic check)
 			// For now, we assume standard start command, but we could check package.json
 			cmdDesc := "Start Application"
@@ -409,6 +449,42 @@ func (a *Analyzer) generateCommands(result *types.AnalysisResult, detectedTypes 
 				Status:      types.CommandPending,
 			})
 			commandID++
+
+			if a.fileExists("main.go") {
+				result.Commands = append(result.Commands, types.Command{
+					ID:          fmt.Sprintf("cmd-%d", commandID),
+					Description: "Run Application",
+					Command:     "go run main.go",
+					WorkingDir:  a.projectPath,
+					Stage:       "run",
+					Required:    false,
+					Status:      types.CommandPending,
+				})
+				commandID++
+			} else {
+				// Check for cmd/ directory
+				cmdDir := filepath.Join(a.projectPath, "cmd")
+				if entries, err := os.ReadDir(cmdDir); err == nil {
+					for _, entry := range entries {
+						if entry.IsDir() {
+							mainFile := filepath.Join("cmd", entry.Name(), "main.go")
+							if a.fileExists(mainFile) {
+								result.Commands = append(result.Commands, types.Command{
+									ID:          fmt.Sprintf("cmd-%d", commandID),
+									Description: "Run Application",
+									Command:     fmt.Sprintf("go run %s", mainFile),
+									WorkingDir:  a.projectPath,
+									Stage:       "run",
+									Required:    false,
+									Status:      types.CommandPending,
+								})
+								commandID++
+								break
+							}
+						}
+					}
+				}
+			}
 
 			if a.fileExists("main.go") {
 				result.Commands = append(result.Commands, types.Command{
@@ -601,6 +677,30 @@ func (a *Analyzer) isNextJSProject() bool {
 		if _, hasNext := devDeps["next"]; hasNext {
 			return true
 		}
+	}
+
+	return false
+}
+
+// hasScript checks if a script exists in package.json
+func (a *Analyzer) hasScript(scriptName string) bool {
+	if !a.fileExists("package.json") {
+		return false
+	}
+
+	data, err := os.ReadFile(filepath.Join(a.projectPath, "package.json"))
+	if err != nil {
+		return false
+	}
+
+	var pkg map[string]interface{}
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		return false
+	}
+
+	if scripts, ok := pkg["scripts"].(map[string]interface{}); ok {
+		_, exists := scripts[scriptName]
+		return exists
 	}
 
 	return false

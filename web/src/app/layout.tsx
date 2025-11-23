@@ -1,32 +1,48 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
+import type { Metadata } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
+import { ClerkProvider } from '@clerk/nextjs';
+import { CopilotProvider } from '@/components/copilot-chat';
+import "./globals.css";
+import Navbar from "./NavbarClient";
+import Footer from "./FooterClient";
 
-const inter = Inter({ subsets: ['latin'] })
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
 
 export const metadata: Metadata = {
-  title: 'GLive - GitHub to Live',
-  description: 'Automatically run any GitHub project with AI-powered setup',
-  manifest: '/manifest.json',
-  themeColor: '#0ea5e9',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-  },
-}
+  title: "Next.js 15 AIaaS Boilerplate",
+  description: "Modern AIaaS boilerplate with Next.js 15, TypeScript, Tailwind CSS, and Clerk Authentication",
+};
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode
-}) {
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="icon" href="/favicon.ico" />
-      </head>
-      <body className={inter.className}>{children}</body>
-    </html>
-  )
+    <ClerkProvider>
+      <html lang="en">
+        <body
+          className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
+        >
+          {/* Navigation */}
+          <Navbar />
+          {/* End Navigation */}
+          <CopilotProvider>
+            <main className="flex-1 w-full flex flex-col">
+              {children}
+            </main>
+            <Footer />
+          </CopilotProvider>
+        </body>
+      </html>
+    </ClerkProvider>
+  );
 }

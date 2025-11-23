@@ -2,6 +2,7 @@ package ai
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -89,6 +90,11 @@ type ChatResponse struct {
 
 // Chat sends a chat request to the AI API
 func (c *Client) Chat(messages []Message) (string, error) {
+	return c.ChatWithContext(context.Background(), messages)
+}
+
+// ChatWithContext sends a chat request to the AI API with context support
+func (c *Client) ChatWithContext(ctx context.Context, messages []Message) (string, error) {
 	reqBody := ChatRequest{
 		Model:       c.getModel(),
 		Messages:    messages,
@@ -101,7 +107,7 @@ func (c *Client) Chat(messages []Message) (string, error) {
 		return "", fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", c.endpoint, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, "POST", c.endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %w", err)
 	}
@@ -111,6 +117,10 @@ func (c *Client) Chat(messages []Message) (string, error) {
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
+		// Check if it's a context timeout
+		if ctx.Err() == context.DeadlineExceeded {
+			return "", fmt.Errorf("AI analysis timed out - the project may be too large or complex")
+		}
 		return "", fmt.Errorf("network error - please check your internet connection: %w", err)
 	}
 	defer resp.Body.Close()
@@ -178,7 +188,7 @@ func (c *Client) getModel() string {
 
 // AnalyzeProject uses AI to analyze a project
 // Returns the raw JSON string which can be unmarshaled by the caller
-func (c *Client) AnalyzeProject(projectPath string, readmeContent string, fileList []string) (string, error) {
+func (c *Client) AnalyzeProject(ctx context.Context, projectPath string, readmeContent string, fileList []string) (string, error) {
 	prompt := c.buildAnalysisPrompt(projectPath, readmeContent, fileList)
 
 	messages := []Message{
@@ -192,7 +202,7 @@ func (c *Client) AnalyzeProject(projectPath string, readmeContent string, fileLi
 		},
 	}
 
-	response, err := c.Chat(messages)
+	response, err := c.ChatWithContext(ctx, messages)
 	if err != nil {
 		return "", fmt.Errorf("AI analysis failed: %w", err)
 	}

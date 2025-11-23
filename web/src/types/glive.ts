@@ -221,3 +221,40 @@ export interface ActivityItem {
   status: ProjectStatus;
 }
 
+// Connection Metrics
+export interface ConnectionMetrics {
+  connectedAt?: number;
+  reconnectAttempts: number;
+  lastError?: ConnectionError;
+  messageCount: number;
+  latency?: number;
+}
+
+// Connection Error
+export interface ConnectionError {
+  code: string;
+  message: string;
+  timestamp: number;
+  details?: Record<string, unknown>;
+}
+
+// Log Filter Options
+export type LogLevel = 'info' | 'warning' | 'error' | 'success';
+
+export interface LogFilter {
+  levels: LogLevel[];
+  searchQuery: string;
+}
+
+// Event Statistics
+export interface EventStatistics {
+  totalEvents: number;
+  totalCommands: number;
+  successfulCommands: number;
+  failedCommands: number;
+  totalOutputLines: number;
+  errorCount: number;
+  recoveryCount: number;
+  averageDuration?: number;
+}
+

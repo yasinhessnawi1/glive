@@ -22,7 +22,7 @@ type GitClient interface {
 
 // AIClient interface for AI operations
 type AIClient interface {
-	AnalyzeProject(projectPath string, readmeContent string, fileList []string) (string, error)
+	AnalyzeProject(ctx context.Context, projectPath string, readmeContent string, fileList []string) (string, error)
 	DebugError(command string, output string, errorMsg string) (string, error)
 	AutoFixError(command string, output string, errorMsg string, workingDir string) (string, string, bool, error)
 }
@@ -64,11 +64,11 @@ type Config struct {
 	MaxConcurrent int
 	EnableSandbox bool
 	AgentPort     int
-	
+
 	// Observability configuration
-	LogLevel      string // DEBUG, INFO, WARN, ERROR
-	LogFormat     string // json, text
-	LogOutputPath string // Path to log file (empty for stdout)
+	LogLevel       string // DEBUG, INFO, WARN, ERROR
+	LogFormat      string // json, text
+	LogOutputPath  string // Path to log file (empty for stdout)
 	MetricsEnabled bool
 	TracingEnabled bool
 	AuditLogPath   string // Path to audit log file
@@ -76,4 +76,3 @@ type Config struct {
 	LogMaxAge      int    // Max log file age in days
 	LogMaxBackups  int    // Max number of backup log files
 }
-

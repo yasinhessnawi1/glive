@@ -1,6 +1,4 @@
-go 1.24
-
-toolchain go1.24.10
+go 1.24.10
 
 use (
 	./cmd/glive
@@ -9,5 +7,7 @@ use (
 	./pkg/domain
 	./pkg/infrastructure
 	./pkg/interface
+	./pkg/testing
 	./pkg/usecase
+	./tests
 )
