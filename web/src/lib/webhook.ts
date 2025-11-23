@@ -42,7 +42,7 @@ export interface WebhookPayload {
   metadata?: Record<string, any>
 }
 
-export interface WebhookHandler {
+export interface WebhookHandlerDefinition {
   event: string
   handler: (payload: WebhookPayload) => Promise<WebhookResponse>
   config?: {
@@ -103,7 +103,7 @@ export interface WebhookEvent {
 export class WebhookHandler extends EventEmitter {
   private config: WebhookConfig
   private db: Awaited<ReturnType<typeof createDatabaseService>>
-  private handlers: Map<string, WebhookHandler> = new Map()
+  private handlers: Map<string, WebhookHandlerDefinition> = new Map()
   private pendingDeliveries: Map<string, WebhookDelivery> = new Map()
   private retryQueue: WebhookDelivery[] = []
   private retryTimer?: NodeJS.Timeout
@@ -193,7 +193,7 @@ export class WebhookHandler extends EventEmitter {
   /**
    * Register webhook handler
    */
-  registerHandler(handler: WebhookHandler): void {
+  registerHandler(handler: WebhookHandlerDefinition): void {
     this.handlers.set(handler.event, handler)
     this.emit('handlerRegistered', handler.event)
   }
@@ -412,7 +412,7 @@ export class WebhookHandler extends EventEmitter {
    * Execute handler with timeout
    */
   private async executeHandlerWithTimeout(
-    handler: WebhookHandler,
+    handler: WebhookHandlerDefinition,
     payload: WebhookPayload
   ): Promise<WebhookResponse> {
     const timeout = handler.config?.timeout || this.config.timeout
@@ -431,7 +431,7 @@ export class WebhookHandler extends EventEmitter {
    * Execute handler asynchronously
    */
   private async executeHandlerAsync(
-    handler: WebhookHandler,
+    handler: WebhookHandlerDefinition,
     payload: WebhookPayload
   ): Promise<void> {
     try {
@@ -821,11 +821,5 @@ export const WebhookConfigs = {
 
 // Export types
 export type {
-  WebhookConfig,
-  WebhookPayload,
-  WebhookHandler as WebhookHandlerConfig,
-  WebhookResponse,
-  WebhookAttempt,
-  WebhookDelivery,
-  WebhookEvent,
+  WebhookHandlerDefinition as WebhookHandlerConfig,
 }

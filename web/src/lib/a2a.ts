@@ -680,12 +680,3 @@ export const A2AUtils = {
   }
 }
 
-// Export types
-export type {
-  A2AMessage,
-  A2AAgent,
-  A2AConversation,
-  A2AProtocolConfig,
-  A2AMessageHandler,
-  A2AContext,
-}

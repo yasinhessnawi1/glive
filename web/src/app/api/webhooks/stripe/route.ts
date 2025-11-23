@@ -8,12 +8,13 @@ const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET!
 
 export async function POST(req: Request) {
   const body = await req.text()
-  const signature = headers().get('stripe-signature')!
+  const headersList = await headers()
+  const signature = headersList.get('stripe-signature')!
 
   let event: Stripe.Event
 
   try {
-    event = stripe.webhooks.constructEvent(body, signature, endpointSecret)
+    event = stripe!.webhooks.constructEvent(body, signature, endpointSecret)
   } catch (err) {
     console.error('Webhook signature verification failed:', err)
     return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 })
@@ -122,8 +123,9 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session, 
 }
 
 async function handleSubscriptionCreated(subscription: Stripe.Subscription, db: any) {
-  const customerId = subscription.customer as string
-  const userId = subscription.metadata?.userId
+  const sub = subscription as any
+  const customerId = sub.customer as string
+  const userId = sub.metadata?.userId
 
   if (!userId) {
     // Try to find user by stripe_customer_id
@@ -139,21 +141,21 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, db: 
   try {
     await db.createSubscription({
       user_id: finalUserId,
-      stripe_subscription_id: subscription.id,
-      stripe_price_id: subscription.items.data[0].price.id,
-      status: subscription.status as any,
-      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-      cancel_at_period_end: subscription.cancel_at_period_end,
-      trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : undefined
+      stripe_subscription_id: sub.id,
+      stripe_price_id: sub.items.data[0].price.id,
+      status: sub.status as any,
+      current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
+      current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+      cancel_at_period_end: sub.cancel_at_period_end,
+      trial_end: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : undefined
     })
 
     // Update Clerk user metadata
     await updateClerkUserMetadata(finalUserId, {
       subscription: {
-        status: subscription.status,
-        priceId: subscription.items.data[0].price.id,
-        currentPeriodEnd: subscription.current_period_end
+        status: sub.status,
+        priceId: sub.items.data[0].price.id,
+        currentPeriodEnd: sub.current_period_end
       }
     })
 
@@ -165,29 +167,30 @@ async function handleSubscriptionCreated(subscription: Stripe.Subscription, db: 
 }
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription, db: any) {
+  const sub = subscription as any
   try {
-    await db.updateSubscription(subscription.id, {
-      status: subscription.status as any,
-      current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-      cancel_at_period_end: subscription.cancel_at_period_end,
-      trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : undefined
+    await db.updateSubscription(sub.id, {
+      status: sub.status as any,
+      current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
+      current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+      cancel_at_period_end: sub.cancel_at_period_end,
+      trial_end: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : undefined
     })
 
     // Get user ID from subscription
-    const subscriptionRecord = await db.getActiveSubscription(subscription.metadata?.userId || '')
+    const subscriptionRecord = await db.getActiveSubscription(sub.metadata?.userId || '')
     if (subscriptionRecord) {
       // Update Clerk user metadata
       await updateClerkUserMetadata(subscriptionRecord.user_id, {
         subscription: {
-          status: subscription.status,
-          priceId: subscription.items.data[0].price.id,
-          currentPeriodEnd: subscription.current_period_end
+          status: sub.status,
+          priceId: sub.items.data[0].price.id,
+          currentPeriodEnd: sub.current_period_end
         }
       })
     }
 
-    console.log('Subscription updated successfully:', subscription.id)
+    console.log('Subscription updated successfully:', sub.id)
   } catch (error) {
     console.error('Error handling subscription updated:', error)
     throw error
@@ -195,26 +198,27 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription, db: 
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription, db: any) {
+  const sub = subscription as any
   try {
-    await db.updateSubscription(subscription.id, {
+    await db.updateSubscription(sub.id, {
       status: 'canceled' as any,
       cancel_at_period_end: true
     })
 
     // Get user ID from subscription
-    const subscriptionRecord = await db.getActiveSubscription(subscription.metadata?.userId || '')
+    const subscriptionRecord = await db.getActiveSubscription(sub.metadata?.userId || '')
     if (subscriptionRecord) {
       // Update Clerk user metadata
       await updateClerkUserMetadata(subscriptionRecord.user_id, {
         subscription: {
           status: 'canceled',
           priceId: null,
-          currentPeriodEnd: subscription.current_period_end
+          currentPeriodEnd: sub.current_period_end
         }
       })
     }
 
-    console.log('Subscription deleted successfully:', subscription.id)
+    console.log('Subscription deleted successfully:', sub.id)
   } catch (error) {
     console.error('Error handling subscription deleted:', error)
     throw error
@@ -222,8 +226,9 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription, db: 
 }
 
 async function handleInvoiceCreated(invoice: Stripe.Invoice, db: any) {
-  const customerId = invoice.customer as string
-  
+  const inv = invoice as any
+  const customerId = inv.customer as string
+
   // Find user by customer ID
   const profile = await db.getProfileByStripeCustomerId(customerId)
   if (!profile) {
@@ -233,23 +238,23 @@ async function handleInvoiceCreated(invoice: Stripe.Invoice, db: any) {
 
   try {
     // Determine if this is a European transaction for VAT compliance
-    const customer = await stripe.customers.retrieve(customerId)
+    const customer = await stripe!.customers.retrieve(customerId) as any
     const customerCountry = customer.address?.country || 'US'
     const isEUCustomer = ['AT', 'BE', 'BG', 'CY', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK'].includes(customerCountry)
     
     await db.createInvoice({
       user_id: profile.id,
-      stripe_invoice_id: invoice.id,
-      invoice_number: invoice.number || generateInvoiceNumber(),
-      amount_paid: invoice.amount_paid || 0,
-      amount_due: invoice.amount_due || 0,
-      currency: invoice.currency || 'eur',
-      status: invoice.status as any,
-      hosted_invoice_url: invoice.hosted_invoice_url || undefined,
-      invoice_pdf: invoice.invoice_pdf || undefined,
-      line_items: invoice.lines?.data || [],
+      stripe_invoice_id: inv.id,
+      invoice_number: inv.number || generateInvoiceNumber(),
+      amount_paid: inv.amount_paid || 0,
+      amount_due: inv.amount_due || 0,
+      currency: inv.currency || 'eur',
+      status: inv.status as any,
+      hosted_invoice_url: inv.hosted_invoice_url || undefined,
+      invoice_pdf: inv.invoice_pdf || undefined,
+      line_items: inv.lines?.data || [],
       metadata: {
-        ...invoice.metadata,
+        ...inv.metadata,
         customer_country: customerCountry,
         is_eu_transaction: isEUCustomer,
         tax_compliance_checked: true
@@ -257,11 +262,11 @@ async function handleInvoiceCreated(invoice: Stripe.Invoice, db: any) {
     })
 
     // Send invoice email if configured
-    if (invoice.status === 'open') {
-      await sendInvoiceCreatedNotification(invoice, profile)
+    if (inv.status === 'open') {
+      await sendInvoiceCreatedNotification(inv, profile)
     }
 
-    console.log('Invoice created successfully:', invoice.id)
+    console.log('Invoice created successfully:', inv.id)
   } catch (error) {
     console.error('Error handling invoice created:', error)
     throw error
@@ -269,8 +274,9 @@ async function handleInvoiceCreated(invoice: Stripe.Invoice, db: any) {
 }
 
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice, db: any) {
-  const customerId = invoice.customer as string
-  
+  const inv = invoice as any
+  const customerId = inv.customer as string
+
   // Find user by customer ID
   const profile = await db.getProfileByStripeCustomerId(customerId)
   if (!profile) {
@@ -280,15 +286,15 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice, db: any) {
 
   try {
     // Update invoice status
-    await db.updateInvoice(invoice.id, {
+    await db.updateInvoice(inv.id, {
       status: 'paid' as any,
-      amount_paid: invoice.amount_paid || 0,
+      amount_paid: inv.amount_paid || 0,
       paid_at: new Date().toISOString()
     })
 
     // If this is a subscription invoice, activate the subscription
-    if (invoice.subscription) {
-      const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string)
+    if (inv.subscription) {
+      const subscription = await stripe!.subscriptions.retrieve(inv.subscription as string) as any
       await db.updateSubscription(subscription.id, {
         status: 'active' as any
       })
@@ -320,8 +326,9 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice, db: any) {
 }
 
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice, db: any) {
-  const customerId = invoice.customer as string
-  
+  const inv = invoice as any
+  const customerId = inv.customer as string
+
   // Find user by customer ID
   const profile = await db.getProfileByStripeCustomerId(customerId)
   if (!profile) {
@@ -331,31 +338,31 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice, db: any) {
 
   try {
     // Get current payment attempt count
-    const currentInvoice = await db.getInvoiceByStripeId(invoice.id)
+    const currentInvoice = await db.getInvoiceByStripeId(inv.id)
     const attemptCount = (currentInvoice?.payment_attempts || 0) + 1
-    
+
     // Update invoice status based on attempts
     const newStatus = attemptCount >= 3 ? 'uncollectible' : 'past_due'
-    
-    await db.updateInvoice(invoice.id, {
+
+    await db.updateInvoice(inv.id, {
       status: newStatus as any,
       payment_attempts: attemptCount,
-      last_payment_error: invoice.last_finalization_error?.message || 'Payment failed'
+      last_payment_error: inv.last_finalization_error?.message || 'Payment failed'
     })
 
     // If this is a subscription invoice, update subscription status
-    if (invoice.subscription) {
-      const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string)
-      
+    if (inv.subscription) {
+      const subscription = await stripe!.subscriptions.retrieve(inv.subscription as string) as any
+
       // Pause subscription after multiple failures
       if (attemptCount >= 2) {
-        await stripe.subscriptions.update(subscription.id, {
+        await stripe!.subscriptions.update(subscription.id, {
           pause_collection: {
             behavior: 'void'
           }
         })
       }
-      
+
       await db.updateSubscription(subscription.id, {
         status: 'past_due' as any
       })
@@ -371,17 +378,17 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice, db: any) {
     }
 
     // Send payment failure notification with escalation level
-    await sendPaymentFailureNotification(invoice, profile, attemptCount)
-    
+    await sendPaymentFailureNotification(inv, profile, attemptCount)
+
     // Schedule automated payment retry if not max attempts
     if (attemptCount < 3) {
-      await schedulePaymentRetry(invoice.id, attemptCount)
+      await schedulePaymentRetry(inv.id, attemptCount)
     }
-    
+
     // Update customer payment history
     await updateCustomerPaymentHistory(customerId, 'failed')
-    
-    console.log(`Invoice payment failed (attempt ${attemptCount}):`, invoice.id)
+
+    console.log(`Invoice payment failed (attempt ${attemptCount}):`, inv.id)
   } catch (error) {
     console.error('Error handling invoice payment failed:', error)
     throw error
@@ -607,20 +614,21 @@ async function handleInvoiceUpdated(invoice: Stripe.Invoice, db: any) {
 }
 
 // Handle invoice finalized event
-async function handleInvoiceFinalized(invoice: Stripe.Invoice, db: any) {
+async function handleInvoiceFinalized(invoice: Stripe.Invoice, _db: any) {
+  const inv = invoice as any
   try {
-    await db.updateInvoice(invoice.id, {
+    await _db.updateInvoice(inv.id, {
       status: 'open' as any,
       finalized_at: new Date().toISOString(),
-      invoice_pdf: invoice.invoice_pdf || undefined
+      invoice_pdf: inv.invoice_pdf || undefined
     })
-    
+
     // Auto-send invoice if configured
-    if (invoice.auto_advance) {
-      await stripe.invoices.sendInvoice(invoice.id)
+    if (inv.auto_advance && inv.id) {
+      await stripe!.invoices.sendInvoice(inv.id)
     }
-    
-    console.log('Invoice finalized successfully:', invoice.id)
+
+    console.log('Invoice finalized successfully:', inv.id)
   } catch (error) {
     console.error('Error handling invoice finalized:', error)
     throw error

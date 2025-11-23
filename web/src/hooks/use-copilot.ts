@@ -147,7 +147,7 @@ export function useCopilot(options: UseCopilotOptions = {}): UseCopilotReturn {
         description: 'Due date in ISO format',
       },
     ],
-    handler: async ({ title, content, priority, dueDate }) => {
+    handler: async ({ title, content, priority, dueDate }: { title: string; content?: string; priority?: string; dueDate?: string }) => {
       if (!user) {
         throw new Error('User must be logged in to create tasks')
       }
@@ -208,7 +208,7 @@ export function useCopilot(options: UseCopilotOptions = {}): UseCopilotReturn {
       },
       {
         name: 'items',
-        type: 'array',
+        type: 'string[]',
         description: 'Invoice items with description, quantity, price',
         required: true,
       },
@@ -218,7 +218,7 @@ export function useCopilot(options: UseCopilotOptions = {}): UseCopilotReturn {
         description: 'Currency code (default: EUR)',
       },
     ],
-    handler: async ({ customerEmail, customerName, items, currency = 'EUR' }) => {
+    handler: async ({ customerEmail, customerName, items, currency = 'EUR' }: { customerEmail: string; customerName: string; items: any[]; currency?: string }) => {
       if (!user) {
         throw new Error('User must be logged in to generate invoices')
       }
@@ -277,7 +277,7 @@ export function useCopilot(options: UseCopilotOptions = {}): UseCopilotReturn {
         description: 'Time range for analysis (day, week, month, year)',
       },
     ],
-    handler: async ({ dataType, timeRange = 'month' }) => {
+    handler: async ({ dataType, timeRange = 'month' }: { dataType: string; timeRange?: string }) => {
       if (!user) {
         throw new Error('User must be logged in to analyze data')
       }
@@ -334,7 +334,7 @@ export function useCopilot(options: UseCopilotOptions = {}): UseCopilotReturn {
         description: 'Data to send to the workflow',
       },
     ],
-    handler: async ({ platform, workflowId, data = {} }) => {
+    handler: async ({ platform, workflowId, data = {} }: { platform: string; workflowId?: string; data?: any }) => {
       if (!user) {
         throw new Error('User must be logged in to trigger workflows')
       }
@@ -391,7 +391,7 @@ export function useCopilot(options: UseCopilotOptions = {}): UseCopilotReturn {
       timestamp: new Date(),
     }
 
-    setMessages(prev => [...prev, userMessage])
+    setMessages((prev: CopilotMessage[]) => [...prev, userMessage])
     setIsLoading(true)
     setError(null)
     lastMessageRef.current = content.trim()
@@ -433,7 +433,7 @@ export function useCopilot(options: UseCopilotOptions = {}): UseCopilotReturn {
         timestamp: new Date(),
       }
 
-      setMessages(prev => [...prev, assistantMessage])
+      setMessages((prev: CopilotMessage[]) => [...prev, assistantMessage])
       onMessage?.(userMessage)
       onMessage?.(assistantMessage)
 
@@ -494,17 +494,17 @@ export function useCopilot(options: UseCopilotOptions = {}): UseCopilotReturn {
 
   // Update context
   const updateContext = useCallback((newContext: Record<string, any>) => {
-    setContext(prev => ({ ...prev, ...newContext }))
+    setContext((prev: Record<string, any>) => ({ ...prev, ...newContext }))
   }, [])
 
   // Add instruction
   const addInstruction = useCallback((instruction: string) => {
-    setUserInstructions(prev => [...prev, instruction])
+    setUserInstructions((prev: string[]) => [...prev, instruction])
   }, [])
 
   // Remove instruction
   const removeInstruction = useCallback((instruction: string) => {
-    setUserInstructions(prev => prev.filter(i => i !== instruction))
+    setUserInstructions((prev: string[]) => prev.filter((i: string) => i !== instruction))
   }, [])
 
   // Execute action directly

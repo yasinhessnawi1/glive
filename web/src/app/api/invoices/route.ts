@@ -6,8 +6,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createDatabaseService } from '@/lib/database'
-import { stripe } from '@/lib/stripe'
+import { stripe as stripeClient } from '@/lib/stripe'
 import Stripe from 'stripe'
+
+// Assert stripe client is available on server side
+const stripe = stripeClient!
 
 interface InvoiceFilter {
   status?: 'draft' | 'open' | 'paid' | 'void' | 'uncollectible'
@@ -196,7 +199,7 @@ export async function PUT(request: NextRequest) {
     const db = await createDatabaseService()
 
     // Verify user owns the invoice
-    const userInvoices = await db.getUserInvoices(userId)
+    const userInvoices: any[] = await db.getUserInvoices(userId)
     const userInvoice = userInvoices.find(inv => inv.stripe_invoice_id === invoice_id)
     
     if (!userInvoice) {
@@ -242,8 +245,8 @@ export async function PUT(request: NextRequest) {
         status: updatedInvoice.status as any,
         amount_paid: updatedInvoice.amount_paid,
         amount_due: updatedInvoice.amount_due,
-        hosted_invoice_url: updatedInvoice.hosted_invoice_url,
-        invoice_pdf: updatedInvoice.invoice_pdf
+        hosted_invoice_url: updatedInvoice.hosted_invoice_url ?? undefined,
+        invoice_pdf: updatedInvoice.invoice_pdf ?? undefined
       })
 
       return NextResponse.json({
@@ -306,9 +309,9 @@ export async function DELETE(request: NextRequest) {
     const db = await createDatabaseService()
 
     // Verify user owns the invoice
-    const userInvoices = await db.getUserInvoices(userId)
+    const userInvoices: any[] = await db.getUserInvoices(userId)
     const userInvoice = userInvoices.find(inv => inv.stripe_invoice_id === invoiceId)
-    
+
     if (!userInvoice) {
       return NextResponse.json(
         { error: 'Invoice not found or access denied' },
@@ -370,7 +373,7 @@ async function handleInvoiceList(userId: string, filters: InvoiceFilter, db: any
   const userInvoices = await db.getUserInvoices(userId, 200) // Get larger set for filtering
   
   // Get corresponding Stripe invoices
-  const stripeInvoiceIds = userInvoices.map(inv => inv.stripe_invoice_id)
+  const stripeInvoiceIds = userInvoices.map((inv: any) => inv.stripe_invoice_id)
   const stripeInvoices: Stripe.Invoice[] = []
   
   // Fetch invoices from Stripe in batches
@@ -418,10 +421,10 @@ async function handleInvoiceList(userId: string, filters: InvoiceFilter, db: any
 
   if (filters.search) {
     const searchTerm = filters.search.toLowerCase()
-    filteredInvoices = filteredInvoices.filter(inv => 
+    filteredInvoices = filteredInvoices.filter(inv =>
       inv.number?.toLowerCase().includes(searchTerm) ||
       inv.description?.toLowerCase().includes(searchTerm) ||
-      (typeof inv.customer === 'object' && inv.customer?.email?.toLowerCase().includes(searchTerm))
+      (typeof inv.customer === 'object' && inv.customer && 'email' in inv.customer && inv.customer.email?.toLowerCase().includes(searchTerm))
     )
   }
 
@@ -499,9 +502,9 @@ async function handleInvoiceGet(userId: string, invoiceId: string | null, db: an
   }
 
   // Verify user owns the invoice
-  const userInvoices = await db.getUserInvoices(userId)
+  const userInvoices: any[] = await db.getUserInvoices(userId)
   const userInvoice = userInvoices.find(inv => inv.stripe_invoice_id === invoiceId)
-  
+
   if (!userInvoice) {
     return NextResponse.json(
       { error: 'Invoice not found or access denied' },
@@ -511,9 +514,10 @@ async function handleInvoiceGet(userId: string, invoiceId: string | null, db: an
 
   try {
     // Get detailed invoice from Stripe
-    const invoice = await stripe.invoices.retrieve(invoiceId, {
+    const invoiceResponse = await stripe.invoices.retrieve(invoiceId, {
       expand: ['customer', 'payment_intent', 'lines.data']
     })
+    const invoice = invoiceResponse as any
 
     return NextResponse.json({
       invoice: {
@@ -535,13 +539,13 @@ async function handleInvoiceGet(userId: string, invoiceId: string | null, db: an
         subtotal: invoice.subtotal,
         tax: invoice.tax,
         total: invoice.total,
-        lines: invoice.lines.data.map(line => ({
+        lines: invoice.lines?.data.map((line: any) => ({
           id: line.id,
           description: line.description,
           quantity: line.quantity,
           unit_amount: line.unit_amount,
           amount: line.amount
-        })),
+        })) ?? [],
         metadata: invoice.metadata,
         custom_fields: invoice.custom_fields
       }
@@ -622,8 +626,8 @@ async function handleInvoiceSearch(userId: string, filters: InvoiceFilter, db: a
 }
 
 async function handleInvoiceExport(userId: string, filters: InvoiceFilter, db: any) {
-  const userInvoices = await db.getUserInvoices(userId)
-  
+  const userInvoices: any[] = await db.getUserInvoices(userId)
+
   // Format for CSV export
   const csvData = userInvoices.map(invoice => ({
     invoice_number: invoice.invoice_number,
@@ -645,12 +649,12 @@ async function handleInvoiceExport(userId: string, filters: InvoiceFilter, db: a
 }
 
 async function handleOverdueInvoices(userId: string, db: any) {
-  const userInvoices = await db.getUserInvoices(userId)
+  const userInvoices: any[] = await db.getUserInvoices(userId)
   const now = new Date()
-  
+
   // Filter overdue invoices (open status and past due date)
-  const overdueInvoices = userInvoices.filter(invoice => 
-    invoice.status === 'open' && 
+  const overdueInvoices = userInvoices.filter(invoice =>
+    invoice.status === 'open' &&
     new Date(invoice.created_at) < new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) // 30 days
   )
 
@@ -664,13 +668,13 @@ async function handleOverdueInvoices(userId: string, db: any) {
       hosted_invoice_url: inv.hosted_invoice_url
     })),
     total_overdue: overdueInvoices.length,
-    total_overdue_amount: overdueInvoices.reduce((sum, inv) => sum + inv.amount_due, 0)
+    total_overdue_amount: overdueInvoices.reduce((sum: number, inv: any) => sum + inv.amount_due, 0)
   })
 }
 
 async function handleUpcomingInvoices(userId: string, db: any) {
   // For this implementation, we'll return draft invoices as "upcoming"
-  const userInvoices = await db.getUserInvoices(userId)
+  const userInvoices: any[] = await db.getUserInvoices(userId)
   const upcomingInvoices = userInvoices.filter(inv => inv.status === 'draft')
 
   return NextResponse.json({
@@ -698,10 +702,10 @@ async function handleInvoiceDuplicate(userId: string, params: any, db: any) {
   try {
     const originalInvoice = await stripe.invoices.retrieve(invoice_id, {
       expand: ['lines.data']
-    })
+    }) as any
 
     // Create new draft invoice with same items
-    const newInvoice = await stripe.invoices.create({
+    const newInvoice = await (stripe.invoices.create as any)({
       customer: originalInvoice.customer as string,
       currency: originalInvoice.currency,
       description: `Copy of ${originalInvoice.description || originalInvoice.number}`,
@@ -770,7 +774,7 @@ async function handleBulkAction(userId: string, params: any, db: any) {
     )
   }
 
-  const results = []
+  const results: { invoice_id: string; success: boolean; error?: string }[] = []
   
   for (const invoiceId of invoice_ids) {
     try {
@@ -805,18 +809,18 @@ async function handleBulkAction(userId: string, params: any, db: any) {
 
 async function handleGenerateReport(userId: string, params: any, db: any) {
   const { report_type, date_from, date_to } = params
-  
-  const userInvoices = await db.getUserInvoices(userId)
-  
+
+  const userInvoices: any[] = await db.getUserInvoices(userId)
+
   // Filter by date range if provided
   let filteredInvoices = userInvoices
   if (date_from) {
-    filteredInvoices = filteredInvoices.filter(inv => 
+    filteredInvoices = filteredInvoices.filter(inv =>
       new Date(inv.created_at) >= new Date(date_from)
     )
   }
   if (date_to) {
-    filteredInvoices = filteredInvoices.filter(inv => 
+    filteredInvoices = filteredInvoices.filter(inv =>
       new Date(inv.created_at) <= new Date(date_to)
     )
   }

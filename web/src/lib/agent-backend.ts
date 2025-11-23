@@ -1,4 +1,22 @@
-import { EventType } from '@ag-ui/client'
+// Custom event types for the agent backend simulation
+const EventType = {
+  USER_MESSAGE: 'user_message',
+  AGENT_MESSAGE: 'agent_message',
+  PROCESSING_START: 'processing_start',
+  PROCESSING_END: 'processing_end',
+  TOOL_REQUEST: 'tool_request',
+  TOOL_CALL: 'tool_call',
+  TOOL_RESULT: 'tool_result',
+  COMPLETION_REQUEST: 'completion_request',
+  COMPLETION_RESPONSE: 'completion_response',
+  SESSION_START: 'session_start',
+  SESSION_END: 'session_end',
+  HEALTH_CHECK: 'health_check',
+  HEARTBEAT: 'heartbeat',
+  CONNECTED: 'connected',
+  DISCONNECTED: 'disconnected',
+  ERROR: 'error',
+} as const
 
 // Mock AgentServer class since the actual @ag-ui/server package might not be available
 interface AgentServerOptions {
@@ -384,7 +402,7 @@ export class CustomAgentBackend {
 
   private executeUuidTool(params: any): any {
     const { count = 1 } = params
-    const uuids = []
+    const uuids: string[] = []
 
     for (let i = 0; i < Math.min(count, 10); i++) {
       const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {

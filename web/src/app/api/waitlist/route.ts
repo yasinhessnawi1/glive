@@ -39,8 +39,8 @@ export async function POST(req: NextRequest) {
     const waitlistEntry = await db.addToWaitlist({
       email: validatedData.email,
       name: validatedData.name,
-      company: validatedData.company || null,
-      message: validatedData.message || null
+      company: validatedData.company || undefined,
+      message: validatedData.message || undefined
     })
     
     if (!waitlistEntry) {

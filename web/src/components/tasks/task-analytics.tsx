@@ -227,7 +227,7 @@ export default function TaskAnalytics({
     ]
 
     // Completion trend (last 30 days)
-    const completionTrend = []
+    const completionTrend: { date: string; completed: number; created: number }[] = []
     for (let i = 29; i >= 0; i--) {
       const date = subDays(now, i)
       const dateStr = format(date, 'MMM dd')
@@ -242,7 +242,7 @@ export default function TaskAnalytics({
     }
 
     // Productivity trend (weekly averages)
-    const productivityTrend = []
+    const productivityTrend: { date: string; productivity: number }[] = []
     for (let i = 11; i >= 0; i--) {
       const weekStart = subWeeks(now, i)
       const weekEnd = subWeeks(now, i - 1)
@@ -406,7 +406,7 @@ export default function TaskAnalytics({
                 <SelectContent>
                   <SelectItem value="all">All Assignees</SelectItem>
                   {uniqueAssignees.map(assignee => (
-                    <SelectItem key={assignee} value={assignee}>{assignee}</SelectItem>
+                    <SelectItem key={assignee || 'unknown'} value={assignee || 'unknown'}>{assignee || 'Unknown'}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -483,7 +483,7 @@ export default function TaskAnalytics({
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"

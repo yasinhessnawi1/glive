@@ -177,7 +177,7 @@ export class WordPressClient {
       throw new Error(`WordPress API error: ${response.status} - ${error}`)
     }
 
-    return response.json() as T
+    return await response.json() as T
   }
 
   // Posts Management
@@ -316,7 +316,7 @@ export class WordPressClient {
       throw new Error(`WordPress media upload error: ${response.status} - ${error}`)
     }
 
-    return response.json() as WordPressMedia
+    return await response.json() as WordPressMedia
   }
 
   // Categories Management
@@ -498,7 +498,7 @@ export async function syncWordPressToLocal(db: any): Promise<{
     const posts = await wp.getPosts({
       status: 'publish',
       per_page: 100, // Adjust as needed
-      orderby: 'modified',
+      orderby: 'date',
       order: 'desc'
     })
 

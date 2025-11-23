@@ -8,10 +8,16 @@ import { auth } from '@clerk/nextjs/server'
 import { createDatabaseService } from '@/lib/database'
 import OpenAI from 'openai'
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-})
+// Lazy initialize OpenAI client to avoid build-time errors
+let openai: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY || '',
+    })
+  }
+  return openai
+}
 
 interface WorkflowFilter {
   status?: 'all' | 'active' | 'inactive' | 'error'
@@ -930,7 +936,7 @@ function calculateWorkflowHealth(workflow: any, executionStats: any): number {
 }
 
 async function generateWorkflowInsights(workflow: any, executionStats: any): Promise<string[]> {
-  const insights = []
+  const insights: string[] = []
   
   if (executionStats.success_rate < 80) {
     insights.push('Consider implementing error handling and retry logic')

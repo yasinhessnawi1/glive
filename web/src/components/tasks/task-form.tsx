@@ -47,10 +47,10 @@ const taskSchema = z.object({
   actualHours: z.number().min(0).optional(),
   dependencies: z.array(z.string()).optional(),
   attachments: z.array(z.string()).optional(),
-  isRecurring: z.boolean().default(false),
+  isRecurring: z.boolean().optional().default(false),
   recurringPattern: z.enum(['daily', 'weekly', 'monthly']).optional(),
-  notifyAssignee: z.boolean().default(true),
-  isTemplate: z.boolean().default(false)
+  notifyAssignee: z.boolean().optional().default(true),
+  isTemplate: z.boolean().optional().default(false)
 })
 
 type TaskFormData = z.infer<typeof taskSchema>
@@ -155,7 +155,7 @@ export default function TaskForm({
   const [loadingAI, setLoadingAI] = useState(false)
 
   const form = useForm<TaskFormData>({
-    resolver: zodResolver(taskSchema),
+    resolver: zodResolver(taskSchema) as any,
     defaultValues: {
       title: task?.title || '',
       content: task?.content || '',

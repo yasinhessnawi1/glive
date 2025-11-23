@@ -558,14 +558,16 @@ export function CopilotWrapper({ children, fallback, onError }: CopilotWrapperPr
     }
 
     // Global error handler for CopilotKit
-    window.addEventListener('unhandledrejection', (event) => {
+    const rejectionHandler = (event: PromiseRejectionEvent) => {
       if (event.reason?.message?.includes('copilot')) {
         handleError(event.reason)
       }
-    })
+    }
+
+    window.addEventListener('unhandledrejection', rejectionHandler)
 
     return () => {
-      window.removeEventListener('unhandledrejection', handleError)
+      window.removeEventListener('unhandledrejection', rejectionHandler)
     }
   }, [onError])
 

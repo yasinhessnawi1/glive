@@ -515,7 +515,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const headersList = headers()
+    const headersList = await headers()
     const contentType = headersList.get('content-type') || ''
     const signature = headersList.get('x-make-signature')
     const makeScenarioId = headersList.get('x-make-scenario-id')

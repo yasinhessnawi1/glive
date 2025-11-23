@@ -242,9 +242,11 @@ export class AIRequestProcessor extends EventEmitter {
 
       // Make request to provider
       const response = await this.makeProviderRequest(request, provider, model)
-      
+
       // Update metrics
-      this.updateMetrics(response, provider, model, startTime)
+      if (model) {
+        this.updateMetrics(response, provider, model, startTime)
+      }
 
       // Cache response
       if (this.config.caching.enabled) {
@@ -1015,16 +1017,3 @@ export const ProviderTemplates = {
   }),
 }
 
-// Export types
-export type {
-  AIProvider,
-  AIModel,
-  AIRequest,
-  AIMessage,
-  AIFunction,
-  AITool,
-  AIToolCall,
-  AIResponse,
-  AIProcessorConfig,
-  AIMetrics,
-}

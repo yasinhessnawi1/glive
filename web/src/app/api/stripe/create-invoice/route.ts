@@ -196,6 +196,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    const stripeClient = stripe!
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
     const invoiceId = searchParams.get('invoice_id')
@@ -269,7 +270,7 @@ export async function GET(request: NextRequest) {
         }
 
         try {
-          const invoice = await stripe.invoices.retrieve(invoiceId)
+          const invoice = await stripeClient.invoices.retrieve(invoiceId) as any
           return NextResponse.json({
             invoice_id: invoice.id,
             status: invoice.status,
@@ -378,12 +379,13 @@ export async function POST(request: NextRequest) {
     }
 
     const db = await createDatabaseService()
+    const stripeClient = stripe!
 
     // Get or create customer
     let customerId = customer_id
     if (!customerId && customer_email) {
       // Find existing customer by email
-      const existingCustomers = await stripe.customers.list({
+      const existingCustomers = await stripeClient.customers.list({
         email: customer_email,
         limit: 1
       })
@@ -392,7 +394,7 @@ export async function POST(request: NextRequest) {
         customerId = existingCustomers.data[0].id
       } else {
         // Create new customer
-        const newCustomer = await stripe.customers.create({
+        const newCustomer = await stripeClient.customers.create({
           email: customer_email,
           metadata: {
             created_by: userId,
@@ -414,7 +416,7 @@ export async function POST(request: NextRequest) {
       if (vatInfo) {
         // Create or get tax rate for the country
         const taxRateName = `VAT ${countryCode}`
-        const taxRates = await stripe.taxRates.list({
+        const taxRates = await stripeClient.taxRates.list({
           limit: 100
         })
 
@@ -424,7 +426,7 @@ export async function POST(request: NextRequest) {
         )
 
         if (!taxRate) {
-          taxRate = await stripe.taxRates.create({
+          taxRate = await stripeClient.taxRates.create({
             display_name: taxRateName,
             description: `${vatInfo.country_name} VAT`,
             jurisdiction: countryCode,
@@ -462,7 +464,7 @@ export async function POST(request: NextRequest) {
 
     // Create invoice items in Stripe
     const createdItems = await Promise.all(
-      invoiceItems.map(item => stripe.invoiceItems.create(item))
+      invoiceItems.map(item => stripeClient.invoiceItems.create(item))
     )
 
     // Prepare invoice creation parameters
@@ -489,7 +491,7 @@ export async function POST(request: NextRequest) {
 
     // Add payment settings
     if (payment_settings) {
-      invoiceParams.payment_settings = {
+      (invoiceParams as any).payment_settings = {
         payment_method_types: payment_settings.payment_method_types,
         default_payment_method: payment_settings.default_payment_method
       }
@@ -509,16 +511,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Create the invoice
-    const invoice = await stripe.invoices.create(invoiceParams)
+    const invoice = await stripeClient.invoices.create(invoiceParams) as any
 
     // Apply discount if specified
     if (discount) {
       if (discount.coupon) {
-        await stripe.invoices.update(invoice.id, {
+        await stripeClient.invoices.update(invoice.id, {
           discounts: [{ coupon: discount.coupon }]
         })
       } else if (discount.promotion_code) {
-        await stripe.invoices.update(invoice.id, {
+        await stripeClient.invoices.update(invoice.id, {
           discounts: [{ promotion_code: discount.promotion_code }]
         })
       }
@@ -527,7 +529,7 @@ export async function POST(request: NextRequest) {
     // Finalize the invoice if auto_advance is enabled
     let finalizedInvoice = invoice
     if (auto_advance) {
-      finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id)
+      finalizedInvoice = await stripeClient.invoices.finalizeInvoice(invoice.id)
     }
 
     // Store invoice record in database
@@ -541,7 +543,7 @@ export async function POST(request: NextRequest) {
       status: finalizedInvoice.status as any,
       hosted_invoice_url: finalizedInvoice.hosted_invoice_url,
       invoice_pdf: finalizedInvoice.invoice_pdf,
-      line_items: createdItems.map(item => ({
+      line_items: createdItems.map((item: any) => ({
         description: item.description,
         quantity: item.quantity,
         unit_amount: item.unit_amount,
@@ -551,7 +553,7 @@ export async function POST(request: NextRequest) {
 
     // Send invoice if collection method is send_invoice
     if (collection_method === 'send_invoice' && auto_advance) {
-      await stripe.invoices.sendInvoice(finalizedInvoice.id)
+      await stripeClient.invoices.sendInvoice(finalizedInvoice.id)
     }
 
     return NextResponse.json({
@@ -610,7 +612,8 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { action, invoice_id, ...params } = body
+    const { action, invoice_id, ..._params } = body
+    const stripeClient = stripe!
 
     if (!invoice_id) {
       return NextResponse.json(
@@ -622,7 +625,7 @@ export async function PUT(request: NextRequest) {
     switch (action) {
       case 'finalize':
         try {
-          const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice_id)
+          const finalizedInvoice = await stripeClient.invoices.finalizeInvoice(invoice_id)
           return NextResponse.json({
             success: true,
             invoice: {
@@ -640,7 +643,7 @@ export async function PUT(request: NextRequest) {
 
       case 'send':
         try {
-          const sentInvoice = await stripe.invoices.sendInvoice(invoice_id)
+          const sentInvoice = await stripeClient.invoices.sendInvoice(invoice_id)
           return NextResponse.json({
             success: true,
             invoice: {
@@ -658,7 +661,7 @@ export async function PUT(request: NextRequest) {
 
       case 'void':
         try {
-          const voidedInvoice = await stripe.invoices.voidInvoice(invoice_id)
+          const voidedInvoice = await stripeClient.invoices.voidInvoice(invoice_id)
           return NextResponse.json({
             success: true,
             invoice: {
@@ -676,7 +679,7 @@ export async function PUT(request: NextRequest) {
 
       case 'mark_paid':
         try {
-          const paidInvoice = await stripe.invoices.pay(invoice_id, {
+          const paidInvoice = await stripeClient.invoices.pay(invoice_id, {
             paid_out_of_band: true
           })
           return NextResponse.json({
@@ -733,7 +736,7 @@ async function handleInvoicePreview(userId: string, request: NextRequest): Promi
     // Calculate VAT if applicable
     let vatAmount = 0
     let vatRate = 0
-    let vatCountry = null
+    let vatCountry: string | null = null
 
     if (vat_settings?.customer_location && !vat_settings.reverse_charge) {
       const countryCode = vat_settings.customer_location.toUpperCase()

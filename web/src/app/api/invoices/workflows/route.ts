@@ -6,10 +6,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createDatabaseService } from '@/lib/database'
-import { stripe } from '@/lib/stripe'
+import { stripe as stripeClient } from '@/lib/stripe'
+
+// Assert stripe client is available on server side
+const stripe = stripeClient!
 
 // Workflow types
-export const WORKFLOW_TYPES = {
+const WORKFLOW_TYPES = {
   payment_reminder: {
     name: 'Payment Reminder',
     description: 'Automated payment reminder emails',
@@ -92,7 +95,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action')
 
-    const db = await createDatabaseService()
+    const db = await createDatabaseService() as any
 
     switch (action) {
       case 'rules':
@@ -113,7 +116,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Workflow API error:', error)
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
         message: error instanceof Error ? error.message : 'Unknown error'
       },
@@ -135,7 +138,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { action, ...params } = body
 
-    const db = await createDatabaseService()
+    const db = await createDatabaseService() as any
 
     switch (action) {
       case 'create_rule':
@@ -176,10 +179,10 @@ export async function PUT(request: NextRequest) {
     const body = await request.json()
     const { ruleId, ...updates } = body
 
-    const db = await createDatabaseService()
+    const db = await createDatabaseService() as any as any
 
     const updated = await db.updateWorkflowRule(userId, ruleId, updates)
-    
+
     return NextResponse.json({
       success: true,
       rule: updated,
@@ -214,7 +217,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    const db = await createDatabaseService()
+    const db = await createDatabaseService() as any
     await db.deleteWorkflowRule(userId, ruleId)
 
     return NextResponse.json({
@@ -235,7 +238,7 @@ export async function DELETE(request: NextRequest) {
 
 async function handleGetRules(userId: string, db: any) {
   const rules = await db.getWorkflowRules(userId)
-  
+
   return NextResponse.json({
     rules,
     totalRules: rules.length,
@@ -285,16 +288,26 @@ async function handleGetOverdueInvoices(userId: string, db: any) {
     const now = new Date()
 
     // Find overdue invoices
-    const overdueInvoices = []
-    
+    const overdueInvoices: {
+      id: any;
+      invoiceNumber: any;
+      stripeInvoiceId: any;
+      amountDue: number;
+      currency: string;
+      daysOverdue: number;
+      dueDate: string;
+      customerEmail: string | null;
+      escalationLevel: number;
+    }[] = []
+
     for (const invoice of userInvoices) {
       if (invoice.status === 'open' || invoice.status === 'sent') {
         try {
           const stripeInvoice = await stripe.invoices.retrieve(invoice.stripe_invoice_id)
-          
+
           if (stripeInvoice.due_date && stripeInvoice.due_date * 1000 < now.getTime()) {
             const daysOverdue = Math.floor((now.getTime() - (stripeInvoice.due_date * 1000)) / (24 * 60 * 60 * 1000))
-            
+
             overdueInvoices.push({
               id: invoice.id,
               invoiceNumber: invoice.invoice_number,
@@ -303,7 +316,7 @@ async function handleGetOverdueInvoices(userId: string, db: any) {
               currency: stripeInvoice.currency,
               daysOverdue,
               dueDate: new Date(stripeInvoice.due_date * 1000).toISOString(),
-              customerEmail: typeof stripeInvoice.customer === 'object' ? stripeInvoice.customer?.email : null,
+              customerEmail: typeof stripeInvoice.customer === 'object' && stripeInvoice.customer && 'email' in stripeInvoice.customer ? stripeInvoice.customer.email : null,
               escalationLevel: daysOverdue > 30 ? 3 : daysOverdue > 14 ? 2 : 1
             })
           }
@@ -414,8 +427,8 @@ async function handleGetAnalytics(userId: string, searchParams: URLSearchParams,
     }
 
     // Calculate success rate
-    const successRate = analytics.totalExecutions > 0 
-      ? (analytics.successfulExecutions / analytics.totalExecutions) * 100 
+    const successRate = analytics.totalExecutions > 0
+      ? (analytics.successfulExecutions / analytics.totalExecutions) * 100
       : 0
 
     return NextResponse.json({
@@ -490,7 +503,7 @@ async function handleExecuteWorkflow(userId: string, params: any, db: any) {
     }
 
     const invoice = invoiceId ? await db.getInvoice(userId, invoiceId) : null
-    
+
     const execution = await executeWorkflow(rule, invoice, dryRun, db, userId)
 
     return NextResponse.json({
@@ -539,17 +552,17 @@ async function handleBulkExecute(userId: string, params: any, db: any) {
       )
     }
 
-    const executions = []
+    const executions: any[] = []
     for (const invoiceId of invoiceIds) {
       try {
         const invoice = await db.getInvoice(userId, invoiceId)
         const execution = await executeWorkflow(rule, invoice, dryRun, db, userId)
-        executions.push({ invoiceId, ...execution })
+        executions.push({ ...execution, invoiceId })
       } catch (error) {
         executions.push({
           invoiceId,
           status: 'failed',
-          error: error.message
+          error: error instanceof Error ? error.message : String(error)
         })
       }
     }
@@ -613,7 +626,7 @@ async function executeWorkflow(
   db: any,
   userId: string
 ) {
-  const execution = {
+  const execution: any = {
     id: `exec_${Date.now()}`,
     ruleId: rule.id,
     invoiceId: invoice?.id,
@@ -626,7 +639,7 @@ async function executeWorkflow(
   try {
     // Check conditions
     const conditionsMet = evaluateConditions(rule.conditions, invoice)
-    
+
     if (!conditionsMet) {
       execution.status = 'skipped'
       execution.reason = 'Conditions not met'
@@ -657,14 +670,14 @@ async function executeWorkflow(
       }
     }
 
-    execution.status = execution.actions.some(a => a.status === 'failed') ? 'partial' : 'success'
+    execution.status = execution.actions.some((a: any) => a.status === 'failed') ? 'partial' : 'success'
   } catch (error) {
     execution.status = 'failed'
     execution.error = error.message
   }
 
   execution.completedAt = new Date().toISOString()
-  
+
   // Log execution (unless dry run)
   if (!dryRun) {
     await db.logWorkflowExecution(userId, execution)
@@ -679,7 +692,7 @@ function evaluateConditions(conditions: WorkflowCondition[], invoice: any): bool
   // Simple condition evaluation (would be more sophisticated in production)
   return conditions.every(condition => {
     const value = getNestedValue(invoice, condition.field)
-    
+
     switch (condition.operator) {
       case 'equals':
         return value === condition.value
@@ -715,19 +728,19 @@ async function executeAction(
   switch (action.type) {
     case 'send_email':
       return await sendWorkflowEmail(action.config, invoice)
-    
+
     case 'update_status':
       return await updateInvoiceStatus(action.config, invoice, db)
-    
+
     case 'log_activity':
       return await logActivity(action.config, invoice, db, userId)
-    
+
     case 'create_task':
       return await createTask(action.config, invoice, db, userId)
-    
+
     case 'apply_late_fees':
       return await applyLateFees(action.config, invoice, db)
-    
+
     default:
       throw new Error(`Unknown action type: ${action.type}`)
   }
@@ -735,7 +748,7 @@ async function executeAction(
 
 async function sendWorkflowEmail(config: any, invoice: any): Promise<any> {
   console.log('Would send email:', config, invoice?.invoice_number)
-  
+
   // TODO: Integrate with email service
   return {
     emailSent: true,
@@ -747,7 +760,7 @@ async function sendWorkflowEmail(config: any, invoice: any): Promise<any> {
 
 async function updateInvoiceStatus(config: any, invoice: any, db: any): Promise<any> {
   console.log('Would update invoice status:', config.status, invoice?.id)
-  
+
   // TODO: Update invoice status in database
   return {
     statusUpdated: true,
@@ -759,7 +772,7 @@ async function updateInvoiceStatus(config: any, invoice: any, db: any): Promise<
 
 async function logActivity(config: any, invoice: any, db: any, userId: string): Promise<any> {
   console.log('Would log activity:', config.message, invoice?.invoice_number)
-  
+
   // TODO: Log to activity system
   return {
     activityLogged: true,
@@ -770,7 +783,7 @@ async function logActivity(config: any, invoice: any, db: any, userId: string): 
 
 async function createTask(config: any, invoice: any, db: any, userId: string): Promise<any> {
   console.log('Would create task:', config.title, invoice?.invoice_number)
-  
+
   // TODO: Create task in task management system
   return {
     taskCreated: true,
@@ -782,7 +795,7 @@ async function createTask(config: any, invoice: any, db: any, userId: string): P
 
 async function applyLateFees(config: any, invoice: any, db: any): Promise<any> {
   console.log('Would apply late fees:', config.amount, invoice?.invoice_number)
-  
+
   // TODO: Apply late fees via Stripe
   return {
     lateFeesApplied: true,
@@ -802,7 +815,7 @@ function validateWorkflowRule(rule: any) {
     validation.errors.push('Name is required')
   }
 
-  if (!rule.type || !WORKFLOW_TYPES[rule.type]) {
+  if (!rule.type || !WORKFLOW_TYPES[rule.type as keyof typeof WORKFLOW_TYPES]) {
     validation.isValid = false
     validation.errors.push('Valid workflow type is required')
   }

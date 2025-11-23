@@ -50,7 +50,7 @@ export interface AIProvider {
 }
 
 export interface ModelSelectionCriteria {
-  task: 'chat' | 'completion' | 'analysis' | 'creative' | 'code' | 'reasoning'
+  task: 'chat' | 'completion' | 'analysis' | 'creative' | 'code' | 'reasoning' | 'tool_call'
   priority: 'speed' | 'quality' | 'cost' | 'balanced'
   maxCost?: number
   maxLatency?: number

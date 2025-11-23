@@ -196,10 +196,10 @@ async function handleToolCall(userId: string, params: MCPToolCall) {
         const task = await db.createTask({
           user_id: userId,
           title,
-          content: content || null,
+          content: content || undefined,
           completed: false,
           priority: priority as 'low' | 'medium' | 'high' | 'urgent',
-          due_date: due_date ? new Date(due_date).toISOString() : null
+          due_date: due_date ? new Date(due_date).toISOString() : undefined
         })
 
         if (!task) {

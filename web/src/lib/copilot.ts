@@ -4,7 +4,6 @@
  */
 
 import { CopilotRuntime, OpenAIAdapter, copilotRuntimeNextJSAppRouterEndpoint } from '@copilotkit/runtime'
-import { CopilotBackend, LangGraphAdapter } from '@copilotkit/backend'
 import { createDatabaseService } from './database'
 import { createInvoiceService } from './invoice'
 import { triggerN8nWorkflow } from './n8n'
@@ -153,7 +152,6 @@ export class EnhancedCopilotService extends EventEmitter {
       let adapter
       if (this.config.providers.openai) {
         adapter = new OpenAIAdapter({
-          apiKey: this.config.providers.openai.apiKey,
           model: this.config.providers.openai.model || 'gpt-4',
         })
       }
@@ -163,7 +161,6 @@ export class EnhancedCopilotService extends EventEmitter {
       }
 
       this.runtime = new CopilotRuntime({
-        adapter,
         actions: this.buildCopilotActions(),
       })
 
@@ -566,9 +563,9 @@ export class EnhancedCopilotService extends EventEmitter {
   private async generateRecommendations(
     userId: string,
     category?: string,
-    context?: any
+    _context?: any
   ): Promise<any[]> {
-    const recommendations = []
+    const recommendations: { type: string; title: string; description: string; action: string; priority: string }[] = []
 
     // Get user data for analysis
     const tasks = await this.db.getUserTasks(userId)
@@ -630,7 +627,7 @@ export class EnhancedCopilotService extends EventEmitter {
   }
 
   private getTaskRecommendations(tasks: any[]): string[] {
-    const recommendations = []
+    const recommendations: string[] = []
     
     const highPriorityTasks = tasks.filter(task => task.priority === 'high' && !task.completed)
     if (highPriorityTasks.length > 0) {
@@ -646,7 +643,7 @@ export class EnhancedCopilotService extends EventEmitter {
   }
 
   private getInvoiceRecommendations(invoices: any[]): string[] {
-    const recommendations = []
+    const recommendations: string[] = []
     
     const overdueInvoices = invoices.filter(invoice => 
       invoice.status !== 'paid' && new Date(invoice.created_at) < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
@@ -660,7 +657,7 @@ export class EnhancedCopilotService extends EventEmitter {
   }
 
   private getWorkflowRecommendations(workflows: any[]): string[] {
-    const recommendations = []
+    const recommendations: string[] = []
     
     const inactiveWorkflows = workflows.filter(workflow => !workflow.active)
     if (inactiveWorkflows.length > 0) {
@@ -684,10 +681,14 @@ export class EnhancedCopilotService extends EventEmitter {
     if (!this.runtime) {
       throw new Error('Runtime not initialized')
     }
-    
+
+    const serviceAdapter = new OpenAIAdapter({
+      model: this.config.providers.openai?.model || 'gpt-4',
+    })
+
     return copilotRuntimeNextJSAppRouterEndpoint({
       runtime: this.runtime,
-      serviceAdapter: this.runtime,
+      serviceAdapter,
       endpoint: '/api/copilotkit',
     })
   }
@@ -731,13 +732,3 @@ export const defaultCopilotConfig: CopilotConfig = {
   },
 }
 
-// Export types
-export type {
-  CopilotConfig,
-  CopilotActionConfig,
-  CopilotWorkflowConfig,
-  CopilotWorkflowStep,
-  CopilotContext,
-  CopilotMessage,
-  CopilotSession,
-}

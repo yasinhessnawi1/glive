@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, Calculator, FileText, MessageSquare, Refresh, Copy, Check } from 'lucide-react'
+import { Loader2, Calculator, FileText, MessageSquare, RefreshCw, Copy, Check } from 'lucide-react'
 import { toast } from 'sonner'
 import { createLocalMCPClient, quickToolCall, quickResourceRead, quickPromptGet, MCPClient } from '@/lib/mcp-client'
 
@@ -254,7 +254,7 @@ export default function MCPDemo() {
               variant="outline" 
               size="sm"
             >
-              <Refresh className="h-4 w-4 mr-2" />
+              <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
           )}

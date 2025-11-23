@@ -152,7 +152,7 @@ export interface UseAIChatReturn {
   // Metrics
   totalTokens: number
   totalCost: number
-  providerUsage: Record<AIProvider['id'], { tokens: number; cost: number; requests: number }>
+  providerUsage: Partial<Record<AIProvider['id'], { tokens: number; cost: number; requests: number }>>
   
   // Configuration
   updateConfiguration: (config: Partial<AIConfiguration>) => void
@@ -199,7 +199,7 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
   // Initialize individual provider hooks
   const copilot = useCopilot({
     enableStreaming,
-    enableToolCalls,
+    enableAutoActions: enableToolCalls,
     onMessage: (msg) => handleProviderMessage('copilot', msg),
     onError: (error) => handleProviderError('copilot', error),
   })
@@ -247,7 +247,7 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
     },
     ...configuration,
   })
-  const [providerUsage, setProviderUsage] = useState<Record<AIProvider['id'], { tokens: number; cost: number; requests: number }>>({})
+  const [providerUsage, setProviderUsage] = useState<Partial<Record<AIProvider['id'], { tokens: number; cost: number; requests: number }>>>({})
 
   // Refs
   const responseTimeRef = useRef<Record<string, number>>({})
@@ -483,7 +483,7 @@ export function useAIChat(options: UseAIChatOptions = {}): UseAIChatReturn {
           const servers = mcp.connectedServers
           if (servers.length > 0) {
             await mcp.sendMessage(servers[0].id, {
-              jsonrpc: '2.0',
+              type: 'request',
               method: 'chat',
               params: { message: content },
             })

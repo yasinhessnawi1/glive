@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useReactToPrint } from 'react-to-print'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -13,14 +13,14 @@ import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { 
-  Plus, 
-  Trash2, 
-  FileText, 
-  Download, 
-  Print, 
-  Send, 
-  Save, 
+import {
+  Plus,
+  Trash2,
+  FileText,
+  Download,
+  Printer,
+  Send,
+  Save,
   Eye,
   Calendar,
   DollarSign,
@@ -202,7 +202,7 @@ export default function InvoiceGenerator({
   const [isSaving, setIsSaving] = useState(false)
 
   const handlePrint = useReactToPrint({
-    content: () => printRef.current,
+    contentRef: printRef,
     documentTitle: `Invoice ${invoiceData.invoiceNumber}`,
   })
 
@@ -313,7 +313,7 @@ export default function InvoiceGenerator({
   }
 
   // Calculate totals when items change
-  React.useEffect(() => {
+  useEffect(() => {
     calculateTotals()
   }, [invoiceData.items, invoiceData.discountAmount])
 
@@ -462,7 +462,7 @@ export default function InvoiceGenerator({
             Preview
           </Button>
           <Button variant="outline" onClick={handlePrint}>
-            <Print className="h-4 w-4 mr-2" />
+            <Printer className="h-4 w-4 mr-2" />
             Print
           </Button>
           <Button variant="outline" onClick={handleSave} disabled={isSaving}>

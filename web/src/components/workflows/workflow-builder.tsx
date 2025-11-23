@@ -164,6 +164,7 @@ interface WorkflowNode extends Node {
     config: Record<string, any>
     icon?: any
     description?: string
+    color?: string
   }
 }
 
@@ -359,7 +360,13 @@ export default function WorkflowBuilder({
     setIsRunning(true)
     
     // Simulate workflow execution
-    const execution = {
+    const execution: {
+      id: string
+      startTime: string
+      status: string
+      steps: { nodeId: string; nodeName: string; status: string; timestamp: string; duration: number }[]
+      endTime?: string
+    } = {
       id: `exec-${Date.now()}`,
       startTime: new Date().toISOString(),
       status: 'running',

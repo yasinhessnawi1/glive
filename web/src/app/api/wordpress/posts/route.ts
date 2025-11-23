@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
       if (search) params.search = search
       if (category) {
         // Convert category slug to ID if needed
-        const categories = await wp.getCategories({ slug: category })
+        const categories = await wp.getCategories({ slug: category } as any)
         if (categories.length > 0) {
           params.categories = [categories[0].id]
         }

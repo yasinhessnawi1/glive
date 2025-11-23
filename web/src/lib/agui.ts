@@ -43,8 +43,8 @@ export class RoomicorAGUIProtocol extends EventEmitter {
     maxSessionDuration: number
     batchSize: number
   }
-  
-  constructor(streamConfig?: Partial<typeof this.streamConfig>) {
+
+  constructor(streamConfig?: Partial<{ enableRealTime: boolean; keepAliveInterval: number; maxSessionDuration: number; batchSize: number }>) {
     super()
     this.streamConfig = {
       enableRealTime: true,
@@ -177,48 +177,35 @@ export class RoomicorAGUIProtocol extends EventEmitter {
       
       // Set up event collection
       const events: RoomicorAgentEvent[] = []
-      
-      // Run the agent using runAgent method (returns Observable)
-      const eventStream = await agent.runAgent(runInput)
-      
-      // Convert to Promise for easier handling
-      return new Promise((resolve, reject) => {
-        eventStream.subscribe({
-          next: (event: BaseEvent) => {
-            const roomicorEvent = event as RoomicorAgentEvent
-            events.push(roomicorEvent)
-            session.history.push(roomicorEvent)
-            session.updatedAt = new Date()
-            
-            // Broadcast to active streams
-            this.broadcastEvent(sessionId, roomicorEvent)
-            
-            // Emit to main protocol
-            this.emit('agentEvent', roomicorEvent)
-          },
-          error: (error: any) => {
-            console.error('Agent stream error:', error)
-            reject(error)
-          },
-          complete: () => {
-            console.log('Agent stream completed')
-            // Don't resolve here, wait for the final response
-          }
-        })
-        
-        // Resolve after a brief delay to collect events
-        setTimeout(() => {
-          resolve({
-            success: true,
-            events,
-            sessionId,
-            threadId: session.threadId,
-            runId
-          })
-        }, 100)
-      })
-      
-      // This is handled in the Promise above
+
+      // Run the agent using run method (returns RoomicorAgentEvent[])
+      try {
+        const resultEvents = agent.run(runInput)
+
+        // Process events from the agent
+        for (const event of resultEvents) {
+          events.push(event)
+          session.history.push(event)
+          session.updatedAt = new Date()
+
+          // Broadcast to active streams
+          this.broadcastEvent(sessionId, event)
+
+          // Emit to main protocol
+          this.emit('agentEvent', event)
+        }
+
+        return {
+          success: true,
+          events,
+          sessionId,
+          threadId: session.threadId,
+          runId
+        }
+      } catch (error: any) {
+        console.error('Agent run error:', error)
+        throw error
+      }
       
     } catch (error) {
       session.status = 'error'
@@ -379,7 +366,7 @@ export class RoomicorAGUIProtocol extends EventEmitter {
         threadId: session.threadId,
         runId: session.runId
       }
-    } as RoomicorAgentEvent
+    } as unknown as RoomicorAgentEvent
     
     session.history.push(messageStartEvent)
     this.broadcastEvent(sessionId, messageStartEvent)
@@ -461,7 +448,7 @@ export class RoomicorAGUIProtocol extends EventEmitter {
           toolName,
           result
         }
-      } as RoomicorAgentEvent
+      } as unknown as RoomicorAgentEvent
       
       session.history.push(toolEndEvent)
       this.broadcastEvent(sessionId, toolEndEvent)

@@ -58,7 +58,11 @@ export interface RoomicorAgentConfig extends AgentConfig {
   maxTokens?: number
 }
 
-export interface RoomicorAgentEvent extends BaseEvent {
+export interface RoomicorAgentEvent {
+  type: EventType | string
+  threadId?: string
+  runId?: string
+  timestamp?: number
   userId?: string
   metadata?: Record<string, any>
   cost?: number
@@ -180,60 +184,50 @@ export class AGUIEventProcessor {
   }
 }
 
-// Custom agent implementation for Roomicor
-export class RoomicorAgent extends AbstractAgent {
+// Custom agent implementation for Roomicor (standalone, not extending AbstractAgent due to rxjs version mismatch)
+export class RoomicorAgent {
   public config: RoomicorAgentConfig
   private eventProcessor: AGUIEventProcessor
-  
+
   constructor(config: RoomicorAgentConfig) {
-    super({
-      agentId: config.agentId,
-      description: config.description,
-      threadId: config.threadId,
-      initialMessages: config.initialMessages || [],
-      initialState: config.initialState || {},
-      debug: config.debug || false
-    })
     this.config = config
     this.eventProcessor = new AGUIEventProcessor()
   }
-  
-  protected run(input: RunAgentInput): Observable<BaseEvent> {
+
+  run(input: RunAgentInput): RoomicorAgentEvent[] {
     const { threadId, runId } = input
-    
-    return new Observable<BaseEvent>(subscriber => {
-      try {
-        // Emit run started event
-        subscriber.next(this.eventProcessor.createRunStartEvent(threadId, runId))
-        
-        // Process with AI (simplified for now)
-        const lastMessage = input.messages[input.messages.length - 1]
-        const messageContent = typeof lastMessage?.content === 'string' 
-          ? lastMessage.content 
-          : 'Hello from AG-UI!'
-        
-        // Emit message content
-        subscriber.next(this.eventProcessor.createMessageContentEvent(
-          messageContent, 
-          `msg_${Date.now()}`, 
-          threadId, 
-          runId
-        ))
-        
-        // Emit run finished event
-        subscriber.next(this.eventProcessor.createRunFinishEvent(threadId, runId))
-        
-        subscriber.complete()
-        
-      } catch (error) {
-        subscriber.next(this.eventProcessor.createErrorEvent(
-          error instanceof Error ? error.message : 'Unknown error',
-          threadId,
-          runId
-        ))
-        subscriber.error(error)
-      }
-    })
+    const events: RoomicorAgentEvent[] = []
+
+    try {
+      // Emit run started event
+      events.push(this.eventProcessor.createRunStartEvent(threadId, runId))
+
+      // Process with AI (simplified for now)
+      const lastMessage = input.messages[input.messages.length - 1]
+      const messageContent = typeof lastMessage?.content === 'string'
+        ? lastMessage.content
+        : 'Hello from AG-UI!'
+
+      // Emit message content
+      events.push(this.eventProcessor.createMessageContentEvent(
+        messageContent,
+        `msg_${Date.now()}`,
+        threadId,
+        runId
+      ))
+
+      // Emit run finished event
+      events.push(this.eventProcessor.createRunFinishEvent(threadId, runId))
+
+    } catch (error) {
+      events.push(this.eventProcessor.createErrorEvent(
+        error instanceof Error ? error.message : 'Unknown error',
+        threadId,
+        runId
+      ))
+    }
+
+    return events
   }
 }
 

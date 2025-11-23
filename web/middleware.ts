@@ -29,54 +29,51 @@ const isApiRoute = createRouteMatcher(['/api(.*)'])
 
 export default clerkMiddleware(async (auth, req) => {
   const { userId, sessionClaims, orgId } = await auth()
-  
+
   // Allow public routes
   if (isPublicRoute(req)) {
     return
   }
-  
+
   // Protect routes that require authentication
   if (!userId && isProtectedRoute(req)) {
     return (await auth()).redirectToSignIn();
   }
-  
+
   // Check subscription status for dashboard access
   if (userId && req.nextUrl.pathname.startsWith('/dashboard')) {
-    const hasActiveSubscription = sessionClaims?.publicMetadata?.subscription?.status === 'active'
-    const isWaitlistApproved = sessionClaims?.publicMetadata?.waitlistApproved === true
-    
+    const hasActiveSubscription = (sessionClaims?.publicMetadata as any)?.subscription?.status === 'active'
+    const isWaitlistApproved = (sessionClaims?.publicMetadata as any)?.waitlistApproved === true
+
     // If waitlist is enabled and user is not approved, redirect to waitlist
     if (process.env.ENABLE_WAITLIST === 'true' && !isWaitlistApproved) {
       return NextResponse.redirect(new URL('/waitlist', req.url))
     }
-    
+
     // If no active subscription and not waitlist approved, redirect to pricing
     if (!hasActiveSubscription && !isWaitlistApproved) {
       return NextResponse.redirect(new URL('/pricing', req.url))
     }
   }
-  
+
   // Add user context to API routes
   if (isApiRoute(req) && userId) {
     const requestHeaders = new Headers(req.headers)
     requestHeaders.set('x-user-id', userId)
     requestHeaders.set('x-org-id', orgId || '')
-    
+
     return NextResponse.next({
       request: {
         headers: requestHeaders,
       }
     })
   }
-  
+
   // Protect all other routes by default
   if (isProtectedRoute(req)) {
     await auth.protect()
   }
 })
-
-// This file has been moved to /src/middleware.ts for Next.js 15 compatibility.
-// Please use /src/middleware.ts as the entry point for middleware logic.
 
 export const config = {
   matcher: [

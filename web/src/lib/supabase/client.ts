@@ -16,7 +16,7 @@ export function useSupabaseClient() {
       detectSessionInUrl: false,
     },
     global: {
-      fetch: async (url, options = {}) => {
+      fetch: async (url : string | URL | RequestInfo, options : any = {}) => {
         const clerkToken = await getToken({ template: 'agentland1' })
         
         // Insert the Clerk Supabase JWT into the headers

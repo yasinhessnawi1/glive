@@ -6,6 +6,7 @@ import (
 
 	"github.com/glive/domain/entities"
 	"github.com/glive/domain/repository"
+	"github.com/glive/domain/values"
 	"github.com/glive/infrastructure/container"
 	"github.com/glive/infrastructure/executor"
 	"github.com/glive/testing/testutil"
@@ -33,36 +34,43 @@ func (m *mockProjectRepository) Save(ctx context.Context, p *entities.Project) e
 	return nil
 }
 
-func (m *mockProjectRepository) FindByID(ctx context.Context, id string) (*entities.Project, error) {
+func (m *mockProjectRepository) FindByID(ctx context.Context, id *values.ProjectID) (*entities.Project, error) {
 	if m.findErr != nil {
 		return nil, m.findErr
 	}
-	p, ok := m.projects[id]
+	p, ok := m.projects[id.Value()]
 	if !ok {
 		return nil, repository.ErrProjectNotFound
 	}
 	return p, nil
 }
 
-func (m *mockProjectRepository) FindByURL(ctx context.Context, url string) (*entities.Project, error) {
+func (m *mockProjectRepository) FindByURL(ctx context.Context, url *values.URL) (*entities.Project, error) {
 	for _, p := range m.projects {
-		if p.URL().String() == url {
+		if p.URL().String() == url.String() {
 			return p, nil
 		}
 	}
 	return nil, repository.ErrProjectNotFound
 }
 
-func (m *mockProjectRepository) List(ctx context.Context) ([]*entities.Project, error) {
+func (m *mockProjectRepository) List(ctx context.Context, filter repository.ProjectFilter) ([]*entities.Project, error) {
 	result := make([]*entities.Project, 0, len(m.projects))
 	for _, p := range m.projects {
+		// Apply filter if needed
+		if filter.Status != nil && p.Status() != *filter.Status {
+			continue
+		}
+		if filter.Type != nil && p.Type() != *filter.Type {
+			continue
+		}
 		result = append(result, p)
 	}
 	return result, nil
 }
 
-func (m *mockProjectRepository) Delete(ctx context.Context, id string) error {
-	delete(m.projects, id)
+func (m *mockProjectRepository) Delete(ctx context.Context, id *values.ProjectID) error {
+	delete(m.projects, id.Value())
 	return nil
 }
 
@@ -168,11 +176,4 @@ func TestSetupProject_SuspiciousRepository(t *testing.T) {
 	_ = input
 }
 
-// Helper function to create a test container with mocks
-func createTestContainer(t *testing.T) *container.Container {
-	t.Helper()
-	// This would create a container with mocked dependencies
-	// For now, return nil as placeholder
-	return nil
-}
 

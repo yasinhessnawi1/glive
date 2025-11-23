@@ -88,7 +88,7 @@ async function processA2AMessage(message: A2AMessage): Promise<{
   } catch (error) {
     return {
       success: false,
-      error: `Message processing failed: ${error.message}`
+      error: `Message processing failed: ${error instanceof Error ? error.message : String(error)}`
     }
   }
 }
@@ -161,7 +161,7 @@ async function processCopilotKitMessage(message: A2AMessage): Promise<{
 
     return { success: false, error: 'Unsupported message type for CopilotKit agent' }
   } catch (error) {
-    return { success: false, error: `CopilotKit processing error: ${error.message}` }
+    return { success: false, error: `CopilotKit processing error: ${error instanceof Error ? error.message : String(error)}` }
   }
 }
 
@@ -210,7 +210,7 @@ async function processMCPMessage(message: A2AMessage): Promise<{
 
     return { success: false, error: 'Unsupported message type for MCP agent' }
   } catch (error) {
-    return { success: false, error: `MCP processing error: ${error.message}` }
+    return { success: false, error: `MCP processing error: ${error instanceof Error ? error.message : String(error)}` }
   }
 }
 
@@ -256,7 +256,7 @@ async function processAGUIMessage(message: A2AMessage): Promise<{
 
     return { success: false, error: 'Unsupported message type for AG-UI agent' }
   } catch (error) {
-    return { success: false, error: `AG-UI processing error: ${error.message}` }
+    return { success: false, error: `AG-UI processing error: ${error instanceof Error ? error.message : String(error)}` }
   }
 }
 
@@ -312,7 +312,7 @@ async function processWorkflowMessage(message: A2AMessage): Promise<{
 
     return { success: false, error: 'Unsupported message type for workflow agent' }
   } catch (error) {
-    return { success: false, error: `Workflow processing error: ${error.message}` }
+    return { success: false, error: `Workflow processing error: ${error instanceof Error ? error.message : String(error)}` }
   }
 }
 

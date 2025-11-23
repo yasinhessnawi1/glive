@@ -368,7 +368,7 @@ const InvoicePDFDocument: React.FC<InvoicePDFProps> = ({ invoice, options }) => 
 
   return (
     <Document>
-      <Page size={options.format} style={styles.page}>
+      <Page size={options.format as any} style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.companyInfo}>

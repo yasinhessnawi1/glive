@@ -211,12 +211,11 @@ export class EnhancedMCPClient extends EventEmitter {
     // Create transport based on configuration
     switch (this.config.transport) {
       case 'sse':
-        this.transport = new SSEClientTransport({
-          url: this.config.url,
-          headers: this.buildHeaders(),
-        })
+        // MCP SDK 1.x SSEClientTransport takes URL object as first param
+        const serverUrl = new URL(this.config.url)
+        this.transport = new SSEClientTransport(serverUrl)
         break
-      
+
       default:
         throw new Error(`Transport type ${this.config.transport} not supported`)
     }
@@ -229,7 +228,6 @@ export class EnhancedMCPClient extends EventEmitter {
       capabilities: {
         roots: { listChanged: true },
         sampling: {},
-        ...this.config.capabilities,
       },
     })
 
@@ -315,8 +313,8 @@ export class EnhancedMCPClient extends EventEmitter {
     this.ensureConnected()
     
     try {
-      const response = await this.client!.request('tools/list', {})
-      const tools = response.tools || []
+      const response = await this.client!.request({ method: 'tools/list', params: {} }, {} as any)
+      const tools = (response as any).tools || []
       
       // Cache result
       this.setCache(cacheKey, tools, 300000) // 5 minutes
@@ -362,10 +360,10 @@ export class EnhancedMCPClient extends EventEmitter {
       this.validateToolArguments(toolDef, arguments_)
 
       // Execute tool
-      const response = await this.client!.request('tools/call', {
-        name,
-        arguments: arguments_,
-      })
+      const response = await this.client!.request({
+        method: 'tools/call',
+        params: { name, arguments: arguments_ }
+      }, {} as any)
 
       const result: MCPToolResult = {
         success: true,
@@ -433,8 +431,8 @@ export class EnhancedMCPClient extends EventEmitter {
     this.ensureConnected()
     
     try {
-      const response = await this.client!.request('resources/list', {})
-      const resources = response.resources || []
+      const response = await this.client!.request({ method: 'resources/list', params: {} }, {} as any)
+      const resources = (response as any).resources || []
       
       // Enhance with metadata
       const enhancedResources = resources.map((resource: any) => ({
@@ -466,8 +464,8 @@ export class EnhancedMCPClient extends EventEmitter {
     this.ensureConnected()
     
     try {
-      const response = await this.client!.request('resources/read', { uri })
-      const contents = response.contents || []
+      const response = await this.client!.request({ method: 'resources/read', params: { uri } }, {} as any)
+      const contents = (response as any).contents || []
       
       if (cacheKey && useCache) {
         this.setCache(cacheKey, contents, 120000) // 2 minutes
@@ -499,10 +497,10 @@ export class EnhancedMCPClient extends EventEmitter {
     this.ensureConnected()
     
     try {
-      const response = await this.client!.request('prompts/get', {
-        name,
-        arguments: arguments_,
-      })
+      const response = await this.client!.request({
+        method: 'prompts/get',
+        params: { name, arguments: arguments_ }
+      }, {} as any)
       
       if (cacheKey && useCache) {
         this.setCache(cacheKey, response, 300000) // 5 minutes
@@ -907,13 +905,3 @@ export const MCPUtils = {
   },
 }
 
-// Export types
-export type {
-  MCPServerConfig,
-  MCPToolDefinition,
-  MCPResource,
-  MCPPromptTemplate,
-  MCPExecutionContext,
-  MCPToolResult,
-  MCPCacheEntry,
-}

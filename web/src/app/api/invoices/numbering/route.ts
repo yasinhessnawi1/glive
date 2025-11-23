@@ -8,7 +8,7 @@ import { auth } from '@clerk/nextjs/server'
 import { createDatabaseService } from '@/lib/database'
 
 // Invoice numbering formats
-export const NUMBERING_FORMATS = {
+const NUMBERING_FORMATS = {
   sequential: {
     name: 'Sequential',
     description: 'Simple sequential numbering (1, 2, 3...)',
@@ -157,7 +157,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Numbering API error:', error)
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
         message: error instanceof Error ? error.message : 'Unknown error'
       },
@@ -209,7 +209,7 @@ async function handleGetConfig(userId: string, db: any) {
   try {
     // Get user's numbering configuration
     const config = await db.getInvoiceNumberingConfig(userId)
-    
+
     if (!config) {
       // Return default configuration
       return NextResponse.json({
@@ -239,7 +239,7 @@ async function handleGetConfig(userId: string, db: any) {
 
 async function handleGetNextNumber(userId: string, searchParams: URLSearchParams, db: any) {
   const preview = searchParams.get('preview') === 'true'
-  
+
   try {
     const config = await db.getInvoiceNumberingConfig(userId)
     if (!config) {
@@ -250,7 +250,7 @@ async function handleGetNextNumber(userId: string, searchParams: URLSearchParams
     }
 
     const nextNumber = await generateNextNumber(config, preview, db, userId)
-    
+
     return NextResponse.json({
       nextNumber: nextNumber.invoiceNumber,
       sequence: nextNumber.sequence,
@@ -280,7 +280,7 @@ async function handleGetFormats() {
 async function handleValidateNumber(searchParams: URLSearchParams) {
   const invoiceNumber = searchParams.get('invoice_number')
   const country = searchParams.get('country')?.toUpperCase()
-  
+
   if (!invoiceNumber) {
     return NextResponse.json(
       { error: 'Invoice number is required' },
@@ -289,7 +289,7 @@ async function handleValidateNumber(searchParams: URLSearchParams) {
   }
 
   const validation = validateInvoiceNumber(invoiceNumber, country)
-  
+
   return NextResponse.json({
     invoiceNumber,
     country,
@@ -301,10 +301,10 @@ async function handleValidateNumber(searchParams: URLSearchParams) {
 async function handleGetHistory(userId: string, searchParams: URLSearchParams, db: any) {
   const limit = parseInt(searchParams.get('limit') || '50')
   const offset = parseInt(searchParams.get('offset') || '0')
-  
+
   try {
     const history = await db.getInvoiceNumberHistory(userId, limit, offset)
-    
+
     return NextResponse.json({
       history,
       pagination: {
@@ -322,7 +322,7 @@ async function handleGetHistory(userId: string, searchParams: URLSearchParams, d
 async function handleComplianceCheck(searchParams: URLSearchParams) {
   const country = searchParams.get('country')?.toUpperCase()
   const format = searchParams.get('format')
-  
+
   if (!country) {
     return NextResponse.json(
       { error: 'Country is required' },
@@ -341,8 +341,8 @@ async function handleComplianceCheck(searchParams: URLSearchParams) {
   const compliance = {
     country,
     requirements,
-    recommendations: getComplianceRecommendations(country, format),
-    warnings: getComplianceWarnings(country, format)
+    recommendations: getComplianceRecommendations(country, format ?? undefined),
+    warnings: getComplianceWarnings(country, format ?? undefined)
   }
 
   return NextResponse.json(compliance)
@@ -451,7 +451,7 @@ async function handleReserve(userId: string, params: any, db: any) {
       )
     }
 
-    const reservedNumbers = []
+    const reservedNumbers: string[] = []
     for (let i = 0; i < count; i++) {
       const result = await generateNextNumber(config, false, db, userId)
       await db.recordInvoiceNumberUsage(userId, result.invoiceNumber, result.sequence)
@@ -472,7 +472,7 @@ async function handleReserve(userId: string, params: any, db: any) {
 
 async function handleValidateConfig(params: any) {
   const validation = validateConfiguration(params)
-  
+
   return NextResponse.json({
     isValid: validation.isValid,
     errors: validation.errors,
@@ -496,7 +496,7 @@ async function generateNextNumber(
 
   // Get current sequence number
   let sequence = await getNextSequence(config, db, userId)
-  
+
   // Apply reset logic if applicable
   if (config.resetPeriod && config.resetPeriod !== 'none') {
     const shouldReset = await shouldResetSequence(config, db, userId)
@@ -520,7 +520,7 @@ async function generateNextNumber(
 
 async function getNextSequence(config: NumberingConfig, db: any, userId: string): Promise<number> {
   const lastUsed = await db.getLastInvoiceNumber(userId)
-  
+
   if (!lastUsed) {
     return config.startingNumber
   }
@@ -530,7 +530,7 @@ async function getNextSequence(config: NumberingConfig, db: any, userId: string)
 
 async function shouldResetSequence(config: NumberingConfig, db: any, userId: string): Promise<boolean> {
   const lastUsed = await db.getLastInvoiceNumber(userId)
-  
+
   if (!lastUsed) {
     return false
   }
@@ -550,11 +550,11 @@ async function shouldResetSequence(config: NumberingConfig, db: any, userId: str
 
 function formatInvoiceNumber(pattern: string, variables: Record<string, string>): string {
   let result = pattern
-  
+
   Object.entries(variables).forEach(([key, value]) => {
     result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value)
   })
-  
+
   return result
 }
 
@@ -611,7 +611,7 @@ function validateConfiguration(config: any) {
   }
 
   // Validate format
-  if (!config.format || !NUMBERING_FORMATS[config.format]) {
+  if (!config.format || !NUMBERING_FORMATS[config.format as keyof typeof NUMBERING_FORMATS]) {
     validation.isValid = false
     validation.errors.push('Invalid numbering format')
   }
@@ -637,13 +637,13 @@ function validateConfiguration(config: any) {
   }
 
   // Country-specific recommendations
-  if (config.countryCode && COUNTRY_REQUIREMENTS[config.countryCode]) {
-    const requirements = COUNTRY_REQUIREMENTS[config.countryCode]
-    
+  if (config.countryCode && COUNTRY_REQUIREMENTS[config.countryCode as keyof typeof COUNTRY_REQUIREMENTS]) {
+    const requirements = COUNTRY_REQUIREMENTS[config.countryCode as keyof typeof COUNTRY_REQUIREMENTS]
+
     if (requirements.noGaps) {
       validation.recommendations.push('Consider sequential format to avoid gaps')
     }
-    
+
     if (requirements.mustIncludeYear) {
       validation.recommendations.push('Include year in format for compliance')
     }
@@ -653,19 +653,19 @@ function validateConfiguration(config: any) {
 }
 
 function getComplianceRecommendations(country?: string, format?: string): string[] {
-  const recommendations = []
+  const recommendations: string[] = []
 
   if (country && COUNTRY_REQUIREMENTS[country as keyof typeof COUNTRY_REQUIREMENTS]) {
     const req = COUNTRY_REQUIREMENTS[country as keyof typeof COUNTRY_REQUIREMENTS]
-    
+
     if (req.noGaps) {
       recommendations.push('Use sequential numbering without gaps')
     }
-    
+
     if (req.chronological) {
       recommendations.push('Ensure chronological ordering of invoice numbers')
     }
-    
+
     if (req.mustIncludeYear) {
       recommendations.push('Include year in invoice number format')
     }
@@ -679,7 +679,7 @@ function getComplianceRecommendations(country?: string, format?: string): string
 }
 
 function getComplianceWarnings(country?: string, format?: string): string[] {
-  const warnings = []
+  const warnings: string[] = []
 
   if (country === 'DE' && format && !['sequential', 'hybrid'].includes(format)) {
     warnings.push('Germany requires strict sequential numbering')

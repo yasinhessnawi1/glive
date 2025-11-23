@@ -236,7 +236,7 @@ func (o *Orchestrator) RunProject(ctx context.Context, projectID, githubURL stri
 				o.log(fmt.Sprintf("   ⚠️  Failed to merge AI analysis: %v\n", err))
 				o.log("   ℹ️  Using basic analysis instead\n")
 			} else {
-				o.log(fmt.Sprintf("   ✓ Enhanced with AI insights\n"))
+				o.log("   ✓ Enhanced with AI insights\n")
 				if analysis.Description != "" {
 					o.log(fmt.Sprintf("   ✓ Description: %s\n", analysis.Description))
 				}

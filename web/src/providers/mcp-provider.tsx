@@ -644,13 +644,14 @@ export function MCPProvider({
         reject(new Error('Message timeout'))
       }, state.configuration.timeout)
 
-      const handleResponse = (event: MessageEvent) => {
+      const handleResponse = (event: Event) => {
         try {
-          const response = JSON.parse(event.data)
+          const messageEvent = event as MessageEvent
+          const response = JSON.parse(messageEvent.data)
           if (response.id === messageId) {
             clearTimeout(timeout)
             connection.removeEventListener('message', handleResponse)
-            
+
             if (response.error) {
               reject(new Error(response.error.message))
             } else {

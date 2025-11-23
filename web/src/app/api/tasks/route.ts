@@ -8,10 +8,16 @@ import { auth } from '@clerk/nextjs/server'
 import { createDatabaseService } from '@/lib/database'
 import OpenAI from 'openai'
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-})
+// Lazy initialize OpenAI client to avoid build-time errors
+let openai: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY || '',
+    })
+  }
+  return openai
+}
 
 interface TaskFilter {
   status?: 'all' | 'pending' | 'completed' | 'overdue'
@@ -175,10 +181,10 @@ export async function POST(request: NextRequest) {
     const task = await db.createTask({
       user_id: userId,
       title,
-      content: content || null,
+      content: content || undefined,
       completed: false,
       priority,
-      due_date: due_date ? new Date(due_date).toISOString() : null
+      due_date: due_date ? new Date(due_date).toISOString() : undefined
     })
 
     if (!task) {
@@ -303,7 +309,7 @@ export async function PUT(request: NextRequest) {
     const aiSuggestions = await generateAITaskSuggestions(updatedTask, userId, db)
 
     // Track completion time if task was just completed
-    let completionInsights = null
+    let completionInsights: any = null
     if (updates.completed && !existingTask.completed) {
       completionInsights = await analyzeTaskCompletion(updatedTask, existingTask, userId, db)
     }
@@ -792,7 +798,7 @@ Provide 3-5 actionable suggestions to improve this task. Consider:
 
 Format your response as a JSON array of suggestions with type, suggestion, rationale, and confidence (0-100).`
 
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
@@ -822,10 +828,10 @@ async function generateSubtasks(parentTask: any, userId: string, db: any): Promi
 Task: "${parentTask.title}"
 Description: "${parentTask.content || ''}"
 
-Provide specific, actionable subtasks that would help complete the main task. 
+Provide specific, actionable subtasks that would help complete the main task.
 Format as JSON array with title and estimated_duration (in minutes) for each subtask.`
 
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7,
@@ -839,7 +845,7 @@ Format as JSON array with title and estimated_duration (in minutes) for each sub
       const subtasks = JSON.parse(content)
       if (Array.isArray(subtasks)) {
         // Create subtasks in the database
-        const createdSubtasks = []
+        const createdSubtasks: any[] = []
         for (const subtask of subtasks) {
           const created = await db.createTask({
             user_id: userId,
@@ -965,7 +971,7 @@ function calculateProductivityScore(tasks: any[]): number {
 }
 
 async function generateProductivitySuggestions(tasks: any[], analytics: TaskAnalytics): Promise<string[]> {
-  const suggestions = []
+  const suggestions: string[] = []
   
   if (analytics.completion_rate < 60) {
     suggestions.push('Consider breaking down large tasks into smaller, manageable chunks')
@@ -988,7 +994,7 @@ async function generateProductivitySuggestions(tasks: any[], analytics: TaskAnal
 }
 
 async function generateOverviewInsights(tasks: any[], userId: string, db: any): Promise<string[]> {
-  const insights = []
+  const insights: string[] = []
   const now = new Date()
   
   const pendingTasks = tasks.filter(t => !t.completed)

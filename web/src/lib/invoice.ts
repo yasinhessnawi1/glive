@@ -188,7 +188,7 @@ export class InvoiceService {
    */
   async generateInvoice(
     invoiceData: InvoiceData,
-    options: PDFInvoiceOptions = { format: 'A4', theme: 'modern' }
+    options: PDFInvoiceOptions = { format: 'A4', theme: 'modern', language: 'en' }
   ): Promise<InvoiceGenerationResult> {
     try {
       // Generate PDF buffer
@@ -204,6 +204,16 @@ export class InvoiceService {
         console.warn('Failed to create Stripe invoice:', error)
       }
 
+      // Map status to database compatible values
+      const statusMap: Record<string, 'draft' | 'open' | 'paid' | 'void' | 'uncollectible'> = {
+        draft: 'draft',
+        sent: 'open',
+        paid: 'paid',
+        overdue: 'open',
+        cancelled: 'void',
+      }
+      const dbStatus = statusMap[invoiceData.status] || 'draft'
+
       // Save to database
       const dbInvoice = await this.db.createInvoice({
         user_id: invoiceData.userId,
@@ -212,7 +222,7 @@ export class InvoiceService {
         amount_paid: invoiceData.status === 'paid' ? invoiceData.total : 0,
         amount_due: invoiceData.status !== 'paid' ? invoiceData.total : 0,
         currency: invoiceData.currency,
-        status: invoiceData.status,
+        status: dbStatus,
         line_items: invoiceData.items,
         custom_pdf_url: '', // Will be updated if uploaded to storage
       })
@@ -288,7 +298,6 @@ export class InvoiceService {
         subject: `Invoice for ${invoiceData.customerInfo.name}`,
         author: invoiceData.companyInfo.name,
         creator: 'Roomicor Invoice System',
-        producer: 'Roomicor'
       })
       
       return Buffer.from(pdf.output('arraybuffer'))
@@ -815,6 +824,9 @@ export class InvoiceService {
    * Create Stripe invoice
    */
   private async createStripeInvoice(invoiceData: InvoiceData) {
+    if (!stripe) {
+      throw new Error('Stripe not configured')
+    }
     // First, create or retrieve customer
     const customers = await stripe.customers.list({
       email: invoiceData.customerInfo.email,
@@ -846,9 +858,7 @@ export class InvoiceService {
         customer: customerId,
         amount: Math.round(item.total * 100), // Convert to cents
         currency: invoiceData.currency.toLowerCase(),
-        description: item.description,
-        quantity: item.quantity,
-        unit_amount: Math.round(item.unitPrice * 100),
+        description: `${item.description} (Qty: ${item.quantity} @ ${item.unitPrice})`,
       })
     }
 
@@ -896,7 +906,16 @@ export class InvoiceService {
     status: InvoiceData['status']
   ): Promise<boolean> {
     try {
-      const updated = await this.db.updateInvoice(invoiceId, { status })
+      // Map status to database compatible values
+      const statusMap: Record<string, 'draft' | 'open' | 'paid' | 'void' | 'uncollectible'> = {
+        draft: 'draft',
+        sent: 'open',
+        paid: 'paid',
+        overdue: 'open',
+        cancelled: 'void',
+      }
+      const dbStatus = statusMap[status] || 'draft'
+      const updated = await this.db.updateInvoice(invoiceId, { status: dbStatus })
       return !!updated
     } catch (error) {
       console.error('Failed to update invoice status:', error)
@@ -1013,18 +1032,6 @@ export class InvoiceService {
       taxExempt: true,
       reason: 'Non-EU transaction'
     }
-  }
-
-  /**
-   * Generate unique invoice number
-   */
-  static generateInvoiceNumber(prefix: string = 'INV'): string {
-    const date = new Date()
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const timestamp = Date.now().toString().slice(-6)
-    
-    return `${prefix}-${year}${month}-${timestamp}`
   }
 
   /**
@@ -1279,10 +1286,3 @@ export const InvoiceTemplates = {
   }),
 }
 
-// Export types
-export type {
-  InvoiceData,
-  InvoiceItem,
-  PDFInvoiceOptions,
-  InvoiceGenerationResult,
-}

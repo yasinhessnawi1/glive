@@ -1,13 +1,9 @@
-import { HttpAgent, EventType } from '@ag-ui/client'
+import { HttpAgent, EventType, RunAgentInput, BaseEvent } from '@ag-ui/client'
 
 export interface AgentClientConfig {
   url?: string
-  transport?: 'sse' | 'websocket' | 'webhook'
   apiKey?: string
   headers?: Record<string, string>
-  timeout?: number
-  retryInterval?: number
-  maxRetries?: number
 }
 
 export interface AgentMessage {
@@ -28,32 +24,20 @@ export interface ToolCall {
 }
 
 export function createHttpAgent(config: AgentClientConfig = {}): HttpAgent {
-  const defaultConfig = {
-    url: process.env.NEXT_PUBLIC_AGENT_URL || 'http://localhost:8000/agent',
-    transport: 'sse' as const,
-    timeout: 30000,
-    retryInterval: 1000,
-    maxRetries: 3,
-  }
-
-  const finalConfig = { ...defaultConfig, ...config }
+  const defaultUrl = process.env.NEXT_PUBLIC_AGENT_URL || 'http://localhost:8000/agent'
 
   const client = new HttpAgent({
-    url: finalConfig.url,
-    transport: finalConfig.transport,
+    url: config.url || defaultUrl,
     headers: {
       'Content-Type': 'application/json',
-      ...(finalConfig.apiKey && {
-        'Authorization': `Bearer ${finalConfig.apiKey}`,
+      ...(config.apiKey && {
+        'Authorization': `Bearer ${config.apiKey}`,
       }),
       ...(process.env.AGENT_API_KEY && {
         'Authorization': `Bearer ${process.env.AGENT_API_KEY}`,
       }),
-      ...finalConfig.headers,
+      ...config.headers,
     },
-    timeout: finalConfig.timeout,
-    retryInterval: finalConfig.retryInterval,
-    maxRetries: finalConfig.maxRetries,
   })
 
   return client
@@ -65,120 +49,113 @@ export class AgentSession {
   private toolCalls: ToolCall[] = []
   private listeners: Map<string, Function[]> = new Map()
   private sessionId: string
-  private connected: boolean = false
+  private abortController: AbortController | null = null
 
   constructor(config: AgentClientConfig = {}) {
     this.client = createHttpAgent(config)
     this.sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    this.setupEventHandlers()
   }
 
-  private setupEventHandlers() {
-    this.client.on(EventType.CONNECTED, () => {
-      this.connected = true
-      this.emit('connected')
-    })
+  async runAgent(input: Partial<RunAgentInput>): Promise<void> {
+    this.abortController = new AbortController()
 
-    this.client.on(EventType.DISCONNECTED, () => {
-      this.connected = false
-      this.emit('disconnected')
-    })
+    const fullInput: RunAgentInput = {
+      threadId: this.sessionId,
+      runId: `run_${Date.now()}`,
+      messages: [],
+      tools: [],
+      context: [],
+      ...input,
+    }
 
-    this.client.on(EventType.AGENT_MESSAGE, (event: any) => {
-      const message: AgentMessage = {
-        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        type: 'agent',
-        content: event.payload.message || event.payload.content || '',
-        timestamp: new Date(),
-        metadata: event.payload.metadata,
-      }
-      this.messages.push(message)
-      this.emit('message', message)
-    })
-
-    this.client.on(EventType.USER_MESSAGE, (event: any) => {
-      const message: AgentMessage = {
-        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        type: 'user',
-        content: event.payload.message || event.payload.content || '',
-        timestamp: new Date(),
-        metadata: event.payload.metadata,
-      }
-      this.messages.push(message)
-      this.emit('message', message)
-    })
-
-    this.client.on(EventType.TOOL_CALL, (event: any) => {
-      const toolCall: ToolCall = {
-        id: event.payload.id || `tool_${Date.now()}`,
-        name: event.payload.tool || event.payload.name,
-        params: event.payload.params || event.payload.arguments,
-        status: event.payload.status || 'running',
-      }
-
-      const existingIndex = this.toolCalls.findIndex(tc => tc.id === toolCall.id)
-      if (existingIndex >= 0) {
-        this.toolCalls[existingIndex] = { ...this.toolCalls[existingIndex], ...toolCall }
-      } else {
-        this.toolCalls.push(toolCall)
-      }
-
-      this.emit('toolCall', toolCall)
-    })
-
-    this.client.on(EventType.TOOL_RESULT, (event: any) => {
-      const toolCall = this.toolCalls.find(tc => 
-        tc.id === event.payload.id || tc.name === event.payload.tool
-      )
-
-      if (toolCall) {
-        toolCall.status = 'completed'
-        toolCall.result = event.payload.result
-        this.emit('toolResult', toolCall)
-      }
-    })
-
-    this.client.on(EventType.ERROR, (event: any) => {
-      const error = {
-        message: event.payload.error || event.payload.message || 'Unknown error',
-        code: event.payload.code,
-        details: event.payload.details,
-      }
-      this.emit('error', error)
-    })
-
-    this.client.on(EventType.PROCESSING_START, () => {
-      this.emit('processingStart')
-    })
-
-    this.client.on(EventType.PROCESSING_END, () => {
-      this.emit('processingEnd')
-    })
-  }
-
-  async connect(): Promise<void> {
     try {
-      await this.client.connect()
+      const result = await this.client.runAgent(fullInput)
+
+      // Handle the result - it may contain events or a final response
+      if (result && typeof result === 'object') {
+        if ('events' in result && Array.isArray((result as any).events)) {
+          for (const event of (result as any).events) {
+            this.handleEvent(event)
+          }
+        }
+      }
+
+      this.emit('processingEnd')
     } catch (error: any) {
-      throw new Error(`Failed to connect to agent: ${error.message}`)
+      if (error.name !== 'AbortError') {
+        this.emit('error', { message: error.message || 'Unknown error' })
+      }
     }
   }
 
-  async disconnect(): Promise<void> {
-    try {
-      await this.client.disconnect()
-    } catch (error: any) {
-      console.warn('Error disconnecting from agent:', error)
+  private handleEvent(event: BaseEvent): void {
+    switch (event.type) {
+      case EventType.TEXT_MESSAGE_START:
+      case EventType.TEXT_MESSAGE_CONTENT:
+      case EventType.TEXT_MESSAGE_END:
+        this.handleTextMessage(event)
+        break
+      case EventType.TOOL_CALL_START:
+      case EventType.TOOL_CALL_ARGS:
+      case EventType.TOOL_CALL_END:
+        this.handleToolCall(event)
+        break
+      case EventType.RUN_STARTED:
+        this.emit('processingStart')
+        break
+      case EventType.RUN_FINISHED:
+        this.emit('processingEnd')
+        break
+      case EventType.RUN_ERROR:
+        this.emit('error', { message: (event as any).error || 'Run error' })
+        break
+      default:
+        // Handle unknown event types
+        break
+    }
+  }
+
+  private handleTextMessage(event: BaseEvent): void {
+    if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
+      const messageEvent = event as any
+      const message: AgentMessage = {
+        id: messageEvent.messageId || `msg_${Date.now()}`,
+        type: 'agent',
+        content: messageEvent.delta || '',
+        timestamp: new Date(),
+        metadata: {},
+      }
+      this.messages.push(message)
+      this.emit('message', message)
+    }
+  }
+
+  private handleToolCall(event: BaseEvent): void {
+    const toolEvent = event as any
+
+    if (event.type === EventType.TOOL_CALL_START) {
+      const toolCall: ToolCall = {
+        id: toolEvent.toolCallId || `tool_${Date.now()}`,
+        name: toolEvent.toolCallName || '',
+        params: {},
+        status: 'running',
+      }
+      this.toolCalls.push(toolCall)
+      this.emit('toolCall', toolCall)
+    } else if (event.type === EventType.TOOL_CALL_END) {
+      const existingCall = this.toolCalls.find(tc => tc.id === toolEvent.toolCallId)
+      if (existingCall) {
+        existingCall.status = 'completed'
+        this.emit('toolResult', existingCall)
+      }
     }
   }
 
   async sendMessage(content: string, metadata?: Record<string, any>): Promise<void> {
-    if (!this.connected) {
-      throw new Error('Agent is not connected')
-    }
+    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
     const message: AgentMessage = {
-      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: messageId,
       type: 'user',
       content,
       timestamp: new Date(),
@@ -188,48 +165,57 @@ export class AgentSession {
     this.messages.push(message)
     this.emit('message', message)
 
-    await this.client.send({
-      type: EventType.USER_MESSAGE,
-      payload: {
-        message: content,
-        sessionId: this.sessionId,
-        metadata,
-      },
+    await this.runAgent({
+      messages: [{ id: messageId, role: 'user', content }],
     })
   }
 
+  stop(): void {
+    if (this.abortController) {
+      this.abortController.abort()
+      this.abortController = null
+    }
+  }
+
+  // Connect method for compatibility - ag-ui doesn't require explicit connection
+  async connect(): Promise<void> {
+    this.emit('connected')
+  }
+
+  // Disconnect method for compatibility
+  async disconnect(): Promise<void> {
+    this.stop()
+    this.emit('disconnected')
+  }
+
+  // Call a tool - sends a message requesting tool execution
   async callTool(toolName: string, params: any): Promise<string> {
-    if (!this.connected) {
-      throw new Error('Agent is not connected')
+    const toolCallId = `tool_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+
+    const toolCall: ToolCall = {
+      id: toolCallId,
+      name: toolName,
+      params,
+      status: 'pending',
     }
 
-    const toolCallId = `tool_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    this.toolCalls.push(toolCall)
+    this.emit('toolCall', toolCall)
 
-    await this.client.send({
-      type: EventType.TOOL_REQUEST,
-      payload: {
-        id: toolCallId,
-        tool: toolName,
-        params,
-        sessionId: this.sessionId,
-      },
+    // Send a message to trigger tool execution
+    await this.runAgent({
+      messages: [{ id: `msg_${Date.now()}`, role: 'user', content: `Execute tool: ${toolName}` }],
+      tools: [{ name: toolName, description: `Tool ${toolName}`, parameters: params }],
     })
 
     return toolCallId
   }
 
+  // Request a completion
   async requestCompletion(prompt: string, options?: any): Promise<void> {
-    if (!this.connected) {
-      throw new Error('Agent is not connected')
-    }
-
-    await this.client.send({
-      type: EventType.COMPLETION_REQUEST,
-      payload: {
-        prompt,
-        sessionId: this.sessionId,
-        ...options,
-      },
+    await this.runAgent({
+      messages: [{ id: `msg_${Date.now()}`, role: 'user', content: prompt }],
+      ...options,
     })
   }
 
@@ -264,10 +250,6 @@ export class AgentSession {
   }
 
   // Getters
-  get isConnected(): boolean {
-    return this.connected
-  }
-
   get allMessages(): AgentMessage[] {
     return [...this.messages]
   }
@@ -324,7 +306,7 @@ export async function quickAgentMessage(
 
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
-      session.disconnect()
+      session.stop()
       reject(new Error('Agent response timeout'))
     }, 30000)
 
@@ -336,19 +318,15 @@ export async function quickAgentMessage(
 
     session.on('processingEnd', () => {
       clearTimeout(timeout)
-      session.disconnect()
       resolve(responses)
     })
 
     session.on('error', (error: any) => {
       clearTimeout(timeout)
-      session.disconnect()
       reject(error)
     })
 
-    session.connect().then(() => {
-      session.sendMessage(message)
-    }).catch(reject)
+    session.sendMessage(message).catch(reject)
   })
 }
 
@@ -361,30 +339,26 @@ export async function quickToolCall(
 
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
-      session.disconnect()
+      session.stop()
       reject(new Error('Tool call timeout'))
     }, 30000)
 
     session.on('toolResult', (toolCall: ToolCall) => {
       if (toolCall.name === toolName) {
         clearTimeout(timeout)
-        session.disconnect()
         resolve(toolCall)
       }
     })
 
     session.on('error', (error: any) => {
       clearTimeout(timeout)
-      session.disconnect()
       reject(error)
     })
 
-    session.connect().then(() => {
-      session.callTool(toolName, params)
-    }).catch(reject)
+    // Send a message requesting the tool call
+    session.sendMessage(`Call tool: ${toolName} with params: ${JSON.stringify(params)}`).catch(reject)
   })
 }
 
 // Event type re-exports for convenience
 export { EventType } from '@ag-ui/client'
-export type { RawEventSchema as AgentEvent } from '@ag-ui/core'

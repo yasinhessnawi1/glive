@@ -9,7 +9,7 @@ import { createDatabaseService } from '@/lib/database'
 import { aiRouter } from '@/lib/ai-router'
 import { usageTracker } from '@/lib/token-counter'
 import { getCachedAIResponse, cacheAIResponse } from '@/lib/ai-cache'
-import { getSession, updateSessionStats } from '../session/route'
+import { getSession, updateSessionStats } from '@/lib/agui-sessions'
 import { z } from 'zod'
 
 interface StreamMessage {
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get or validate session
-    let session = null
+    let session: any = null
     if (sessionId) {
       session = getSession(sessionId)
       if (!session) {
@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
     // Check cache first for non-streaming requests
     const shouldStream = options.stream !== false
     const cacheKey = `agui:${userId}:${JSON.stringify(conversationMessages)}`
-    
+
     if (!shouldStream) {
       const cached = getCachedAIResponse(cacheKey, 'agui', context?.type || 'chat')
       if (cached) {
@@ -178,9 +178,9 @@ export async function POST(request: NextRequest) {
       tasks: {
         total: tasks.length,
         pending: tasks.filter(t => !t.completed).length,
-        overdue: tasks.filter(t => 
-          !t.completed && 
-          t.due_date && 
+        overdue: tasks.filter(t =>
+          !t.completed &&
+          t.due_date &&
           new Date(t.due_date) < new Date()
         ).length,
         recent: tasks.slice(0, 5).map(t => ({
@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
     const lastMessage = conversationMessages[conversationMessages.length - 1]
     const routingRequest = {
       input: lastMessage.content,
-      operation: context?.type || 'chat' as const,
+      operation: (context?.type === 'workflow' ? 'reasoning' : context?.type === 'task' ? 'analysis' : context?.type === 'general' ? 'chat' : context?.type || 'chat') as 'analysis' | 'code' | 'chat' | 'completion' | 'creative' | 'reasoning' | 'tool_call',
       context: {
         userId,
         sessionId: sessionId || undefined,
@@ -223,15 +223,15 @@ export async function POST(request: NextRequest) {
             let totalCost = 0
 
             // Route the request through AI router
-            const response = await aiRouter.route(routingRequest)
-            
+            const response = await aiRouter.route<string>(routingRequest)
+
             // Simulate streaming by chunking the response
             const chunks = response.data.split(' ')
-            
+
             for (const chunk of chunks) {
               const content = chunk + ' '
               accumulatedContent += content
-              
+
               const data = JSON.stringify({
                 type: 'content',
                 content,
@@ -242,16 +242,16 @@ export async function POST(request: NextRequest) {
                   cached: response.metadata.cached,
                 },
               })
-              
+
               controller.enqueue(encoder.encode(`data: ${data}\n\n`))
-              
+
               // Add delay for realistic streaming
               await new Promise(resolve => setTimeout(resolve, 50))
             }
-            
+
             totalTokens = response.metadata.tokens
             totalCost = response.metadata.cost
-            
+
             // Send tool calls if any
             if (options.tools && options.tools.length > 0) {
               for (const toolName of options.tools) {
@@ -261,31 +261,31 @@ export async function POST(request: NextRequest) {
                   arguments: { context: systemContext },
                   status: 'pending',
                 }
-                
+
                 const toolData = JSON.stringify({
                   type: 'tool_call',
                   tool_call: toolCall,
                   timestamp: new Date().toISOString(),
                 })
-                
+
                 controller.enqueue(encoder.encode(`data: ${toolData}\n\n`))
-                
+
                 // Simulate tool execution
                 await new Promise(resolve => setTimeout(resolve, 1000))
-                
+
                 toolCall.status = 'completed'
                 toolCall.result = `Tool ${toolName} executed successfully`
-                
+
                 const toolResultData = JSON.stringify({
                   type: 'tool_result',
                   tool_call: toolCall,
                   timestamp: new Date().toISOString(),
                 })
-                
+
                 controller.enqueue(encoder.encode(`data: ${toolResultData}\n\n`))
               }
             }
-            
+
             // Send completion signal
             const completionData = JSON.stringify({
               type: 'completion',
@@ -299,10 +299,10 @@ export async function POST(request: NextRequest) {
                 cached: response.metadata.cached,
               },
             })
-            
+
             controller.enqueue(encoder.encode(`data: ${completionData}\n\n`))
             controller.close()
-            
+
             // Track usage
             usageTracker.track({
               inputTokens: totalTokens.input,
@@ -314,7 +314,7 @@ export async function POST(request: NextRequest) {
               userId,
               sessionId,
             })
-            
+
             // Update session stats
             if (sessionId) {
               updateSessionStats(sessionId, {
@@ -323,10 +323,10 @@ export async function POST(request: NextRequest) {
                 cost: totalCost,
               })
             }
-            
+
             // Cache response for non-streaming future requests
             cacheAIResponse(cacheKey, accumulatedContent.trim(), response.metadata.modelId, context?.type || 'chat')
-            
+
           } catch (error) {
             console.error('AG-UI streaming error:', error)
             const errorData = JSON.stringify({
@@ -352,8 +352,8 @@ export async function POST(request: NextRequest) {
       })
     } else {
       // Create non-streaming response
-      const response = await aiRouter.route(routingRequest)
-      
+      const response = await aiRouter.route<string>(routingRequest)
+
       // Track usage
       usageTracker.track({
         inputTokens: response.metadata.tokens.input,
@@ -365,7 +365,7 @@ export async function POST(request: NextRequest) {
         userId,
         sessionId,
       })
-      
+
       // Update session stats
       if (sessionId) {
         updateSessionStats(sessionId, {
@@ -374,10 +374,10 @@ export async function POST(request: NextRequest) {
           cost: response.metadata.cost,
         })
       }
-      
+
       // Cache response
       cacheAIResponse(cacheKey, response.data, response.metadata.modelId, context?.type || 'chat')
-      
+
       const result = {
         content: response.data,
         timestamp: new Date().toISOString(),
@@ -398,7 +398,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('AG-UI streaming error:', error)
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
         message: error instanceof Error ? error.message : 'Unknown error'
       },
@@ -432,7 +432,7 @@ export async function GET(request: NextRequest) {
     // Return AG-UI status and capabilities
     const db = await createDatabaseService()
     const profile = await db.getProfile(userId)
-    
+
     return NextResponse.json({
       status: 'active',
       version: '1.0.0',

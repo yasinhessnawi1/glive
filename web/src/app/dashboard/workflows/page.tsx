@@ -234,7 +234,9 @@ export default function WorkflowsPage() {
       provider: (formData.get('provider') as 'n8n' | 'make') || 'n8n',
       executions: 0,
       successRate: 0,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      errorCount: 0,
+      tags: []
     }
 
     setWorkflows(prev => [newWorkflow, ...prev])
@@ -562,7 +564,7 @@ export default function WorkflowsPage() {
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="space-y-4">
         <TabsList>
           <TabsTrigger value="workflows">Workflows</TabsTrigger>
           <TabsTrigger value="executions">Executions</TabsTrigger>

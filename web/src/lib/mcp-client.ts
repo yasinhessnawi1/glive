@@ -52,15 +52,9 @@ export class MCPClient {
     }
 
     try {
-      // Create SSE transport
-      this.transport = new SSEClientTransport({
-        url: this.config.serverUrl,
-        headers: {
-          ...(this.config.authToken && {
-            'Authorization': `Bearer ${this.config.authToken}`
-          }),
-        },
-      })
+      // Create SSE transport - MCP SDK 1.x takes URL as first param
+      const serverUrl = new URL(this.config.serverUrl)
+      this.transport = new SSEClientTransport(serverUrl)
 
       // Create client
       this.client = new Client({
@@ -110,10 +104,10 @@ export class MCPClient {
 
   async listTools(): Promise<any[]> {
     this.ensureConnected()
-    
+
     try {
-      const response = await this.client!.request('tools/list', {})
-      return response.tools || []
+      const response = await this.client!.request({ method: 'tools/list', params: {} }, {} as any)
+      return (response as any).tools || []
     } catch (error: any) {
       throw new Error(`Failed to list tools: ${error.message}`)
     }
@@ -121,16 +115,16 @@ export class MCPClient {
 
   async callTool(name: string, arguments_: Record<string, any>): Promise<MCPToolResult> {
     this.ensureConnected()
-    
+
     try {
-      const response = await this.client!.request('tools/call', {
-        name,
-        arguments: arguments_,
-      })
-      
+      const response = await this.client!.request({
+        method: 'tools/call',
+        params: { name, arguments: arguments_ }
+      }, {} as any)
+
       return {
-        content: response.content || [],
-        isError: response.isError || false,
+        content: (response as any).content || [],
+        isError: (response as any).isError || false,
       }
     } catch (error: any) {
       throw new Error(`Failed to call tool "${name}": ${error.message}`)
@@ -139,10 +133,10 @@ export class MCPClient {
 
   async listResources(): Promise<MCPResource[]> {
     this.ensureConnected()
-    
+
     try {
-      const response = await this.client!.request('resources/list', {})
-      return response.resources || []
+      const response = await this.client!.request({ method: 'resources/list', params: {} }, {} as any)
+      return (response as any).resources || []
     } catch (error: any) {
       throw new Error(`Failed to list resources: ${error.message}`)
     }
@@ -150,10 +144,10 @@ export class MCPClient {
 
   async readResource(uri: string): Promise<any> {
     this.ensureConnected()
-    
+
     try {
-      const response = await this.client!.request('resources/read', { uri })
-      return response.contents || []
+      const response = await this.client!.request({ method: 'resources/read', params: { uri } }, {} as any)
+      return (response as any).contents || []
     } catch (error: any) {
       throw new Error(`Failed to read resource "${uri}": ${error.message}`)
     }
@@ -161,10 +155,10 @@ export class MCPClient {
 
   async listPrompts(): Promise<MCPPrompt[]> {
     this.ensureConnected()
-    
+
     try {
-      const response = await this.client!.request('prompts/list', {})
-      return response.prompts || []
+      const response = await this.client!.request({ method: 'prompts/list', params: {} }, {} as any)
+      return (response as any).prompts || []
     } catch (error: any) {
       throw new Error(`Failed to list prompts: ${error.message}`)
     }
@@ -172,12 +166,12 @@ export class MCPClient {
 
   async getPrompt(name: string, arguments_: Record<string, any>): Promise<any> {
     this.ensureConnected()
-    
+
     try {
-      const response = await this.client!.request('prompts/get', {
-        name,
-        arguments: arguments_,
-      })
+      const response = await this.client!.request({
+        method: 'prompts/get',
+        params: { name, arguments: arguments_ }
+      }, {} as any)
       return response
     } catch (error: any) {
       throw new Error(`Failed to get prompt "${name}": ${error.message}`)

@@ -2,9 +2,15 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/glive/domain/entities"
 	"github.com/glive/domain/values"
+)
+
+// Repository errors
+var (
+	ErrProjectNotFound = errors.New("project not found")
 )
 
 // ProjectRepository defines the interface for project persistence

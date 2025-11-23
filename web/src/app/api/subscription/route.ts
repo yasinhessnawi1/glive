@@ -68,6 +68,10 @@ export async function PATCH(req: Request) {
       )
     }
 
+    if (!stripe) {
+      return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 })
+    }
+
     // Update subscription in Stripe
     const updatedSubscription = await stripe.subscriptions.update(
       subscription.stripe_subscription_id,
@@ -112,6 +116,10 @@ export async function DELETE(req: Request) {
         { error: 'No active subscription found' },
         { status: 400 }
       )
+    }
+
+    if (!stripe) {
+      return NextResponse.json({ error: 'Stripe not configured' }, { status: 500 })
     }
 
     let canceledSubscription

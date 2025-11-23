@@ -84,5 +84,3 @@ func TestURLValidation_ShortForm(t *testing.T) {
 		t.Errorf("expected repo repo, got %q", repoURL.Repo())
 	}
 }
-
-

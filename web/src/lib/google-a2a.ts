@@ -86,8 +86,7 @@ export class GoogleA2AClient {
       credentials: {
         client_id: config.clientId,
         client_secret: config.clientSecret,
-        redirect_uris: [config.redirectUri]
-      }
+      } as any
     })
 
     // Initialize event listeners
@@ -317,6 +316,7 @@ export class GoogleA2AClient {
           data: payload
         },
         metadata: {
+          timestamp: new Date().toISOString(),
           priority: 'high',
           correlationId: coordinationId
         },
@@ -366,6 +366,7 @@ export class GoogleA2AClient {
           data
         },
         metadata: {
+          timestamp: new Date().toISOString(),
           priority: 'high',
           correlationId: coordinationId
         },

@@ -1,12 +1,12 @@
 // React hook for execution WebSocket stream
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { GliveWebSocket, type ConnectionState } from '@/lib/glive-websocket';
-import type { ExecutionEvent } from '@/types/glive';
+import type { ExecutionEvent, ConnectionMetrics } from '@/types/glive';
 
 export function useExecutionStream(projectId: string | null) {
   const [events, setEvents] = useState<ExecutionEvent[]>([]);
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected');
-  const [metrics, setMetrics] = useState({ reconnectAttempts: 0, messageCount: 0 });
+  const [metrics, setMetrics] = useState<ConnectionMetrics>({ reconnectAttempts: 0, messageCount: 0 });
   const wsRef = useRef<GliveWebSocket | null>(null);
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export function useExecutionStream(projectId: string | null) {
 
     // Command started
     ws.onCommandStarted((payload) => {
-      setEvents((prev) => [
+      setEvents((prev: ExecutionEvent[]) => [
         ...prev,
         {
           type: 'command_started',
@@ -47,7 +47,7 @@ export function useExecutionStream(projectId: string | null) {
 
     // Command output
     ws.onCommandOutput((payload) => {
-      setEvents((prev) => [
+      setEvents((prev: ExecutionEvent[]) => [
         ...prev,
         {
           type: 'output_line',
@@ -60,7 +60,7 @@ export function useExecutionStream(projectId: string | null) {
 
     // Command complete
     ws.onCommandComplete((payload) => {
-      setEvents((prev) => [
+      setEvents((prev: ExecutionEvent[]) => [
         ...prev,
         {
           type: 'command_completed',
@@ -73,7 +73,7 @@ export function useExecutionStream(projectId: string | null) {
 
     // Recovery triggered
     ws.onRecoveryTriggered((payload) => {
-      setEvents((prev) => [
+      setEvents((prev: ExecutionEvent[]) => [
         ...prev,
         {
           type: 'recovery_triggered',
@@ -85,7 +85,7 @@ export function useExecutionStream(projectId: string | null) {
 
     // Recovery plan
     ws.onRecoveryPlan((payload) => {
-      setEvents((prev) => [
+      setEvents((prev: ExecutionEvent[]) => [
         ...prev,
         {
           type: 'recovery_plan',
@@ -96,7 +96,7 @@ export function useExecutionStream(projectId: string | null) {
 
     // Recovery step
     ws.onRecoveryStep((payload) => {
-      setEvents((prev) => [
+      setEvents((prev: ExecutionEvent[]) => [
         ...prev,
         {
           type: 'recovery_step',
@@ -107,7 +107,7 @@ export function useExecutionStream(projectId: string | null) {
 
     // Execution completed
     ws.onExecutionCompleted((payload) => {
-      setEvents((prev) => [
+      setEvents((prev: ExecutionEvent[]) => [
         ...prev,
         {
           type: 'execution_completed',
@@ -119,7 +119,7 @@ export function useExecutionStream(projectId: string | null) {
 
     // Error
     ws.onError((payload) => {
-      setEvents((prev) => [
+      setEvents((prev: ExecutionEvent[]) => [
         ...prev,
         {
           type: 'error',
@@ -140,12 +140,17 @@ export function useExecutionStream(projectId: string | null) {
     setEvents([]);
   }, []);
 
+  const reconnect = useCallback(() => {
+    wsRef.current?.reconnect();
+  }, []);
+
   return {
     events,
     connectionState,
     metrics,
     isConnected: connectionState === 'connected',
     clearEvents,
+    reconnect,
   };
 }
 

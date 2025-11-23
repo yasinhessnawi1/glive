@@ -3,19 +3,20 @@ import { auth } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 
 interface SuccessPageProps {
-  searchParams: {
+  searchParams: Promise<{
     session_id?: string
-  }
+  }>
 }
 
 export default async function SuccessPage({ searchParams }: SuccessPageProps) {
   const { userId } = await auth()
-  
+
   if (!userId) {
     redirect('/sign-in')
   }
 
-  const sessionId = searchParams.session_id
+  const { session_id } = await searchParams
+  const sessionId = session_id
 
   if (!sessionId) {
     redirect('/')
@@ -23,7 +24,7 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
 
   let session
   try {
-    session = await stripe.checkout.sessions.retrieve(sessionId)
+    session = await stripe!.checkout.sessions.retrieve(sessionId)
   } catch (error) {
     console.error('Error retrieving session:', error)
     redirect('/')
@@ -51,20 +52,20 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
             />
           </svg>
         </div>
-        
+
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
           Payment Successful!
         </h1>
-        
+
         <p className="text-gray-600 mb-6">
           Thank you for your purchase. Your payment has been processed successfully.
         </p>
-        
+
         <div className="bg-gray-50 rounded-lg p-4 mb-6">
           <div className="text-sm text-gray-500 mb-1">Session ID</div>
           <div className="font-mono text-xs break-all">{sessionId}</div>
         </div>
-        
+
         <div className="space-y-3">
           <a
             href="/dashboard"
@@ -72,7 +73,7 @@ export default async function SuccessPage({ searchParams }: SuccessPageProps) {
           >
             Go to Dashboard
           </a>
-          
+
           <a
             href="/"
             className="block w-full border border-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-50 transition-colors"

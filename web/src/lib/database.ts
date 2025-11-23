@@ -154,9 +154,9 @@ export interface APIKey {
 
 // Database service class
 export class DatabaseService {
-  public supabase: ReturnType<typeof createClient>
-  
-  constructor(supabase: ReturnType<typeof createClient>) {
+  public supabase: any
+
+  constructor(supabase: any) {
     this.supabase = supabase
   }
 

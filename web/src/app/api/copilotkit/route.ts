@@ -3,69 +3,19 @@
  * Provides comprehensive AI chat functionality with intelligent routing and advanced features
  */
 
-import { 
-  CopilotRuntime, 
-  OpenAIAdapter,
-  copilotRuntimeNextJSAppRouterEndpoint 
+import {
+  CopilotRuntime,
+  copilotRuntimeNextJSAppRouterEndpoint,
+  OpenAIAdapter
 } from '@copilotkit/runtime'
 import { auth } from '@clerk/nextjs/server'
 import { createDatabaseService } from '@/lib/database'
 import { createInvoiceService } from '@/lib/invoice'
 import { triggerN8nWorkflow } from '@/lib/n8n'
 import { triggerMakeScenario } from '@/lib/make'
-import { aiRouter } from '@/lib/ai-router'
-import { usageTracker } from '@/lib/token-counter'
-import { NextRequest } from 'next/server'
-
-// Initialize intelligent AI adapter with routing
-class IntelligentAIAdapter {
-  async processRequest(messages: any[]): Promise<any> {
-    try {
-      // Use AI router for optimal model selection
-      const lastMessage = messages[messages.length - 1]
-      const response = await aiRouter.route({
-        input: lastMessage.content,
-        operation: 'chat',
-        context: {
-          priority: 'normal',
-          budget: 0.05, // 5 cents max per request
-        },
-      })
-
-      return {
-        choices: [{
-          message: {
-            role: 'assistant',
-            content: response.data,
-          },
-        }],
-        usage: {
-          prompt_tokens: response.metadata.tokens.input,
-          completion_tokens: response.metadata.tokens.output,
-          total_tokens: response.metadata.tokens.total,
-        },
-        model: response.metadata.modelId,
-      }
-    } catch (error) {
-      console.error('AI routing failed, falling back to OpenAI:', error)
-      
-      // Fallback to direct OpenAI
-      const openaiAdapter = new OpenAIAdapter({
-        apiKey: process.env.OPENAI_API_KEY!,
-        model: 'gpt-4o-mini',
-      })
-      
-      return openaiAdapter.processRequest(messages)
-    }
-  }
-}
-
-const intelligentAdapter = new IntelligentAIAdapter()
 
 // CopilotKit runtime configuration
 const runtime = new CopilotRuntime({
-  adapter: intelligentAdapter as any,
-  
   // Define available actions that the AI can perform
   actions: [
     {
@@ -76,10 +26,10 @@ const runtime = new CopilotRuntime({
         try {
           const { userId } = await auth()
           if (!userId) return { error: 'User not authenticated' }
-          
+
           const db = await createDatabaseService()
           const subscription = await db.getActiveSubscription(userId)
-          
+
           return {
             hasActiveSubscription: !!subscription,
             subscription: subscription ? {
@@ -94,7 +44,7 @@ const runtime = new CopilotRuntime({
         }
       }
     },
-    
+
     {
       name: 'getUserWorkflows',
       description: 'Get user workflows and their execution status',
@@ -103,10 +53,10 @@ const runtime = new CopilotRuntime({
         try {
           const { userId } = await auth()
           if (!userId) return { error: 'User not authenticated' }
-          
+
           const db = await createDatabaseService()
           const workflows = await db.getUserWorkflows(userId)
-          
+
           return {
             workflows: workflows.map(w => ({
               id: w.id,
@@ -122,7 +72,7 @@ const runtime = new CopilotRuntime({
         }
       }
     },
-    
+
     {
       name: 'getUserTasks',
       description: 'Get user tasks and their completion status',
@@ -131,10 +81,10 @@ const runtime = new CopilotRuntime({
         try {
           const { userId } = await auth()
           if (!userId) return { error: 'User not authenticated' }
-          
+
           const db = await createDatabaseService()
           const tasks = await db.getUserTasks(userId)
-          
+
           return {
             tasks: tasks.map(t => ({
               id: t.id,
@@ -149,7 +99,7 @@ const runtime = new CopilotRuntime({
         }
       }
     },
-    
+
     {
       name: 'createTask',
       description: 'Create a new task for the user',
@@ -162,7 +112,7 @@ const runtime = new CopilotRuntime({
         },
         {
           name: 'content',
-          type: 'string', 
+          type: 'string',
           description: 'Task description or content',
           required: false
         },
@@ -183,9 +133,9 @@ const runtime = new CopilotRuntime({
         try {
           const { userId } = await auth()
           if (!userId) return { error: 'User not authenticated' }
-          
+
           const { title, content, priority = 'medium', dueDate } = params
-          
+
           const db = await createDatabaseService()
           const task = await db.createTask({
             user_id: userId,
@@ -193,9 +143,9 @@ const runtime = new CopilotRuntime({
             content: content || null,
             completed: false,
             priority: priority as 'low' | 'medium' | 'high' | 'urgent',
-            due_date: dueDate ? new Date(dueDate).toISOString() : null
+            due_date: dueDate ? new Date(dueDate).toISOString() : undefined
           })
-          
+
           if (task) {
             return {
               success: true,
@@ -215,7 +165,7 @@ const runtime = new CopilotRuntime({
         }
       }
     },
-    
+
     {
       name: 'getUserInvoices',
       description: 'Get user billing history and invoices',
@@ -231,12 +181,12 @@ const runtime = new CopilotRuntime({
         try {
           const { userId } = await auth()
           if (!userId) return { error: 'User not authenticated' }
-          
+
           const { limit = 10 } = params
-          
+
           const db = await createDatabaseService()
           const invoices = await db.getUserInvoices(userId, limit)
-          
+
           return {
             invoices: invoices.map(i => ({
               id: i.id,
@@ -253,7 +203,7 @@ const runtime = new CopilotRuntime({
         }
       }
     },
-    
+
     {
       name: 'generateInvoice',
       description: 'Generate and send a professional invoice to a customer',
@@ -272,7 +222,7 @@ const runtime = new CopilotRuntime({
         },
         {
           name: 'items',
-          type: 'array',
+          type: 'string',
           description: 'Invoice items with description, quantity, and price',
           required: true
         },
@@ -293,9 +243,9 @@ const runtime = new CopilotRuntime({
         try {
           const { userId } = await auth()
           if (!userId) return { error: 'User not authenticated' }
-          
+
           const { customerEmail, customerName, items, currency = 'EUR', dueDate } = params
-          
+
           const invoiceService = await createInvoiceService()
           const invoiceData = {
             invoiceNumber: `INV-${Date.now()}`,
@@ -323,13 +273,13 @@ const runtime = new CopilotRuntime({
             issueDate: new Date(),
             status: 'sent' as const,
           }
-          
+
           // Calculate tax and total
           invoiceData.tax.amount = invoiceData.subtotal * 0.19
           invoiceData.total = invoiceData.subtotal + invoiceData.tax.amount
-          
+
           const result = await invoiceService.generateInvoice(invoiceData)
-          
+
           if (result.success) {
             return {
               success: true,
@@ -347,7 +297,7 @@ const runtime = new CopilotRuntime({
         }
       }
     },
-    
+
     {
       name: 'triggerWorkflow',
       description: 'Trigger an automation workflow (n8n or Make.com)',
@@ -375,16 +325,16 @@ const runtime = new CopilotRuntime({
         try {
           const { userId } = await auth()
           if (!userId) return { error: 'User not authenticated' }
-          
+
           const { platform, workflowId, data = {} } = params
-          
+
           const payload = {
             ...data,
             triggeredBy: 'copilot',
             userId,
             timestamp: new Date().toISOString(),
           }
-          
+
           let result
           if (platform === 'n8n') {
             result = await triggerN8nWorkflow(payload)
@@ -393,7 +343,7 @@ const runtime = new CopilotRuntime({
           } else {
             return { error: `Unsupported automation platform: ${platform}` }
           }
-          
+
           return {
             success: true,
             message: `${platform} workflow triggered successfully`,
@@ -406,7 +356,7 @@ const runtime = new CopilotRuntime({
         }
       }
     },
-    
+
     {
       name: 'analyzeUserData',
       description: 'Analyze user data and provide insights and recommendations',
@@ -428,19 +378,19 @@ const runtime = new CopilotRuntime({
         try {
           const { userId } = await auth()
           if (!userId) return { error: 'User not authenticated' }
-          
+
           const { dataType, timeRange = 'month' } = params
           const db = await createDatabaseService()
-          
+
           let analysis: any = {}
-          
+
           if (dataType === 'tasks' || dataType === 'all') {
             const tasks = await db.getUserTasks(userId)
             const completed = tasks.filter(t => t.completed).length
-            const overdue = tasks.filter(t => 
+            const overdue = tasks.filter(t =>
               !t.completed && t.due_date && new Date(t.due_date) < new Date()
             ).length
-            
+
             analysis.tasks = {
               total: tasks.length,
               completed,
@@ -452,16 +402,16 @@ const runtime = new CopilotRuntime({
                 `${completed} tasks completed (${Math.round((completed / tasks.length) * 100)}% completion rate)`,
                 overdue > 0 ? `${overdue} tasks are overdue and need attention` : 'No overdue tasks',
               ],
-              recommendations: overdue > 0 
+              recommendations: overdue > 0
                 ? ['Focus on completing overdue tasks first', 'Consider setting more realistic due dates']
                 : ['Great job staying on top of your tasks!', 'Consider adding more challenging goals']
             }
           }
-          
+
           if (dataType === 'workflows' || dataType === 'all') {
             const workflows = await db.getUserWorkflows(userId)
             const active = workflows.filter(w => w.active).length
-            
+
             analysis.workflows = {
               total: workflows.length,
               active,
@@ -478,11 +428,11 @@ const runtime = new CopilotRuntime({
               recommendations: workflows.length === 0
                 ? ['Set up your first workflow to automate repetitive tasks', 'Start with simple email notifications']
                 : active < workflows.length / 2
-                ? ['Consider activating more workflows to increase automation', 'Review inactive workflows for optimization']
-                : ['Excellent workflow automation setup!', 'Monitor performance and optimize as needed']
+                  ? ['Consider activating more workflows to increase automation', 'Review inactive workflows for optimization']
+                  : ['Excellent workflow automation setup!', 'Monitor performance and optimize as needed']
             }
           }
-          
+
           return {
             success: true,
             dataType,
@@ -495,7 +445,7 @@ const runtime = new CopilotRuntime({
         }
       }
     },
-    
+
     {
       name: 'getRecommendations',
       description: 'Get AI-powered recommendations based on user activity and context',
@@ -511,24 +461,24 @@ const runtime = new CopilotRuntime({
         try {
           const { userId } = await auth()
           if (!userId) return { error: 'User not authenticated' }
-          
+
           const { category = 'all' } = params
           const db = await createDatabaseService()
-          
+
           const [tasks, workflows, subscription] = await Promise.all([
             db.getUserTasks(userId),
             db.getUserWorkflows(userId),
             db.getActiveSubscription(userId),
           ])
-          
-          const recommendations = []
-          
+
+          const recommendations: any[] = []
+
           // Productivity recommendations
           if (category === 'productivity' || category === 'all') {
-            const overdueTasks = tasks.filter(t => 
+            const overdueTasks = tasks.filter(t =>
               !t.completed && t.due_date && new Date(t.due_date) < new Date()
             )
-            
+
             if (overdueTasks.length > 0) {
               recommendations.push({
                 type: 'productivity',
@@ -539,7 +489,7 @@ const runtime = new CopilotRuntime({
                 impact: 'high',
               })
             }
-            
+
             const completionRate = tasks.length > 0 ? (tasks.filter(t => t.completed).length / tasks.length) : 0
             if (completionRate < 0.7 && tasks.length > 5) {
               recommendations.push({
@@ -552,7 +502,7 @@ const runtime = new CopilotRuntime({
               })
             }
           }
-          
+
           // Automation recommendations
           if (category === 'automation' || category === 'all') {
             if (workflows.length === 0) {
@@ -578,7 +528,7 @@ const runtime = new CopilotRuntime({
               }
             }
           }
-          
+
           // Subscription recommendations
           if (!subscription) {
             recommendations.push({
@@ -590,7 +540,7 @@ const runtime = new CopilotRuntime({
               impact: 'high',
             })
           }
-          
+
           return {
             success: true,
             category,
@@ -602,7 +552,7 @@ const runtime = new CopilotRuntime({
         }
       }
     },
-    
+
     {
       name: 'getPricingInfo',
       description: 'Get information about available pricing plans',
@@ -617,7 +567,7 @@ const runtime = new CopilotRuntime({
               interval: 'month',
               features: [
                 'Up to 10 workflows',
-                'Basic AI integration', 
+                'Basic AI integration',
                 'Email support',
                 'Dashboard access',
                 'Basic analytics'
@@ -626,7 +576,7 @@ const runtime = new CopilotRuntime({
             {
               name: 'Pro',
               price: 29.99,
-              currency: 'EUR', 
+              currency: 'EUR',
               interval: 'month',
               popular: true,
               features: [
@@ -664,69 +614,36 @@ const runtime = new CopilotRuntime({
         }
       }
     }
-  ],
-  
-  // Define readable state that provides context to the AI
-  state: async () => {
-    try {
-      const { userId } = await auth()
-      if (!userId) return {}
-      
-      const db = await createDatabaseService()
-      const [profile, subscription, workflows, tasks] = await Promise.all([
-        db.getProfile(userId),
-        db.getActiveSubscription(userId), 
-        db.getUserWorkflows(userId),
-        db.getUserTasks(userId)
-      ])
-      
-      return {
-        user: {
-          id: userId,
-          hasProfile: !!profile,
-          email: profile?.email,
-          name: profile ? `${profile.first_name} ${profile.last_name}`.trim() : null
-        },
-        subscription: subscription ? {
-          status: subscription.status,
-          plan: subscription.stripe_price_id,
-          isActive: subscription.status === 'active'
-        } : null,
-        workflows: {
-          total: workflows.length,
-          active: workflows.filter(w => w.active).length,
-          types: {
-            n8n: workflows.filter(w => w.n8n_id).length,
-            make: workflows.filter(w => w.make_id).length
-          }
-        },
-        tasks: {
-          total: tasks.length,
-          completed: tasks.filter(t => t.completed).length,
-          pending: tasks.filter(t => !t.completed).length,
-          overdue: tasks.filter(t => 
-            !t.completed && 
-            t.due_date && 
-            new Date(t.due_date) < new Date()
-          ).length
-        }
-      }
-    } catch (error) {
-      console.error('Error getting CopilotKit state:', error)
-      return {}
-    }
-  }
+  ]
 })
+
+// Lazy create the service adapter to avoid build-time errors
+let serviceAdapter: OpenAIAdapter | null = null
+function getServiceAdapter(): OpenAIAdapter {
+  if (!serviceAdapter) {
+    serviceAdapter = new OpenAIAdapter()
+  }
+  return serviceAdapter
+}
+
+// Create handler lazily
+let handlerInstance: { GET: any; POST: any } | null = null
+function getHandler() {
+  if (!handlerInstance) {
+    handlerInstance = copilotRuntimeNextJSAppRouterEndpoint({
+      runtime,
+      serviceAdapter: getServiceAdapter(),
+      endpoint: '/api/copilotkit'
+    })
+  }
+  return handlerInstance
+}
 
 // Export the Next.js App Router endpoint
-export const { GET, POST } = copilotRuntimeNextJSAppRouterEndpoint({
-  runtime,
-  path: '/api/copilotkit'
-})
+export async function GET(req: Request) {
+  return getHandler().GET(req)
+}
 
-// Add request middleware for authentication context
-export async function handler(req: NextRequest) {
-  // The authentication is handled within individual actions
-  // This ensures proper user context for all CopilotKit operations
-  return { GET, POST }
+export async function POST(req: Request) {
+  return getHandler().POST(req)
 }

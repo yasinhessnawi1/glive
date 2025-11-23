@@ -14,7 +14,7 @@ const AGUIProtocolRequestSchema = z.object({
   agentId: z.string().optional().default('chat-assistant'),
   sessionId: z.string().optional(),
   threadId: z.string().optional(),
-  
+
   // AG-UI standard options
   temperature: z.number().min(0).max(2).optional().default(0.7),
   maxTokens: z.number().min(1).max(4000).optional().default(1000),
@@ -23,16 +23,16 @@ const AGUIProtocolRequestSchema = z.object({
     description: z.string(),
     parameters: z.any()
   })).optional().default([]),
-  
+
   // Initial messages and state (AG-UI protocol)
   initialMessages: z.array(z.object({
     role: z.enum(['user', 'assistant', 'system']),
     content: z.string(),
     timestamp: z.string().optional()
   })).optional().default([]),
-  
+
   initialState: z.record(z.any()).optional().default({}),
-  
+
   // Streaming configuration
   stream: z.boolean().optional().default(true)
 })
@@ -43,9 +43,9 @@ export async function POST(request: NextRequest) {
     // Authenticate user (required for AG-UI protocol)
     const { userId } = await auth()
     if (!userId) {
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         error: 'Authentication required for AG-UI protocol',
-        type: 'AUTH_ERROR' 
+        type: 'AUTH_ERROR'
       }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
@@ -55,16 +55,16 @@ export async function POST(request: NextRequest) {
     // Parse and validate AG-UI request
     const rawBody = await request.json()
     const validatedBody = AGUIProtocolRequestSchema.parse(rawBody)
-    const { 
-      message, 
-      agentId, 
-      sessionId, 
-      temperature, 
-      maxTokens, 
-      tools, 
-      initialMessages, 
+    const {
+      message,
+      agentId,
+      sessionId,
+      temperature,
+      maxTokens,
+      tools,
+      initialMessages,
       initialState,
-      stream 
+      stream
     } = validatedBody
 
     // Validate agent exists
@@ -80,8 +80,8 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    let session
-    
+    let session: any
+
     // Use existing session or create new one (AG-UI protocol)
     if (sessionId) {
       session = roomicorAGUI.getSession(sessionId)
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
           headers: { 'Content-Type': 'application/json' }
         })
       }
-      
+
       // Verify session ownership
       if (session.userId !== userId) {
         return new Response(JSON.stringify({
@@ -111,20 +111,27 @@ export async function POST(request: NextRequest) {
         temperature,
         maxTokens,
         tools,
-        initialMessages,
+        initialMessages: initialMessages?.map((msg: any) => ({
+          ...msg,
+          id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        })),
         initialState
       })
+    }
+
+    if (!session) {
+      throw new Error('Failed to initialize session')
     }
 
     if (stream) {
       // Return streaming response following AG-UI protocol
       const eventStream = roomicorAGUI.createEventStream(session.id)
-      
+
       // Process message asynchronously to trigger AG-UI events
       roomicorAGUI.runAgent(session.id, message).catch(error => {
         console.error('AG-UI agent execution error:', error)
       })
-      
+
       return new Response(eventStream, {
         headers: {
           'Content-Type': 'text/event-stream',
@@ -142,7 +149,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Non-streaming response with AG-UI events
       const response = await roomicorAGUI.runAgent(session.id, message)
-      
+
       return new Response(JSON.stringify({
         success: response.success,
         sessionId: session.id,
@@ -152,7 +159,7 @@ export async function POST(request: NextRequest) {
         error: response.error,
         protocol: 'AG-UI/1.0'
       }), {
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'X-AG-UI-Version': '1.0',
           'X-Session-ID': session.id,
@@ -163,7 +170,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('AG-UI Protocol Error:', error)
-    
+
     // AG-UI compliant error response
     return new Response(JSON.stringify({
       error: error instanceof Error ? error.message : 'Internal server error',
@@ -182,9 +189,9 @@ export async function GET(request: NextRequest) {
   try {
     const { userId } = await auth()
     if (!userId) {
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         error: 'Authentication required',
-        type: 'AUTH_ERROR' 
+        type: 'AUTH_ERROR'
       }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
@@ -332,7 +339,7 @@ export async function GET(request: NextRequest) {
           ],
           agentTemplates: Object.keys(AgentTemplates)
         }), {
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             'X-AG-UI-Version': '1.0'
           }
@@ -357,9 +364,9 @@ export async function PUT(request: NextRequest) {
   try {
     const { userId } = await auth()
     if (!userId) {
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         error: 'Authentication required',
-        type: 'AUTH_ERROR' 
+        type: 'AUTH_ERROR'
       }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
@@ -428,9 +435,9 @@ export async function DELETE(request: NextRequest) {
   try {
     const { userId } = await auth()
     if (!userId) {
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         error: 'Authentication required',
-        type: 'AUTH_ERROR' 
+        type: 'AUTH_ERROR'
       }), {
         status: 401,
         headers: { 'Content-Type': 'application/json' }
@@ -439,7 +446,7 @@ export async function DELETE(request: NextRequest) {
 
     const url = new URL(request.url)
     const sessionId = url.searchParams.get('sessionId')
-    
+
     if (!sessionId) {
       return new Response(JSON.stringify({
         error: 'Session ID required',

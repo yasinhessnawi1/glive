@@ -15,16 +15,16 @@ type URL struct {
 }
 
 var (
-	githubHTTPS = regexp.MustCompile(`^https://github\.com/([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_.-]+?)(?:\.git)?/?$`)
-	githubSSH   = regexp.MustCompile(`^git@github\.com:([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_.-]+?)(?:\.git)?$`)
-	gitlabHTTPS = regexp.MustCompile(`^https://gitlab\.com/([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_.-]+?)(?:\.git)?/?$`)
+	githubHTTPS    = regexp.MustCompile(`^https://github\.com/([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_.-]+?)(?:\.git)?/?$`)
+	githubSSH      = regexp.MustCompile(`^git@github\.com:([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_.-]+?)(?:\.git)?$`)
+	gitlabHTTPS    = regexp.MustCompile(`^https://gitlab\.com/([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_.-]+?)(?:\.git)?/?$`)
 	bitbucketHTTPS = regexp.MustCompile(`^https://bitbucket\.org/([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_.-]+?)(?:\.git)?/?$`)
 
 	// Blocked patterns
 	blockedPatterns = []*regexp.Regexp{
 		regexp.MustCompile(`(?i)(localhost|127\.0\.0\.1|0\.0\.0\.0|::1)`),
 		regexp.MustCompile(`(?i)file://`),
-		regexp.MustCompile(`(?i)\.\.`), // Path traversal
+		regexp.MustCompile(`(?i)\.\.`),        // Path traversal
 		regexp.MustCompile(`(?i)[\x00-\x1f]`), // Control characters
 	}
 )
@@ -91,7 +91,9 @@ func ParseRepoURL(input string) (*RepoURL, error) {
 	}
 
 	if matches := githubSSH.FindStringSubmatch(input); matches != nil {
-		return newRepoURL(input, "github", matches[1], matches[2])
+		// Normalize SCP-like SSH URL to ssh:// scheme for url.Parse compatibility
+		normalized := fmt.Sprintf("ssh://git@github.com/%s/%s.git", matches[1], matches[2])
+		return newRepoURL(normalized, "github", matches[1], matches[2])
 	}
 
 	if matches := gitlabHTTPS.FindStringSubmatch(input); matches != nil {

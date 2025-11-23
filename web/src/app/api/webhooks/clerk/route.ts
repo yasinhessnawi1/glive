@@ -4,15 +4,18 @@ import { WebhookEvent } from '@clerk/nextjs/server'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-const webhookSecret = process.env.CLERK_WEBHOOK_SECRET
-
-if (!webhookSecret) {
-  throw new Error('Please add CLERK_WEBHOOK_SECRET to your environment variables')
+// Get webhook secret lazily to avoid build-time errors
+function getWebhookSecret(): string {
+  const secret = process.env.CLERK_WEBHOOK_SECRET
+  if (!secret) {
+    throw new Error('Please add CLERK_WEBHOOK_SECRET to your environment variables')
+  }
+  return secret
 }
 
 export async function POST(req: Request) {
   // Get the headers
-  const headerPayload = headers()
+  const headerPayload = await headers()
   const svix_id = headerPayload.get('svix-id')
   const svix_timestamp = headerPayload.get('svix-timestamp')
   const svix_signature = headerPayload.get('svix-signature')
@@ -29,7 +32,7 @@ export async function POST(req: Request) {
   const body = JSON.stringify(payload)
 
   // Create a new Svix instance with your secret.
-  const wh = new Webhook(webhookSecret)
+  const wh = new Webhook(getWebhookSecret())
 
   let evt: WebhookEvent
 
@@ -76,14 +79,15 @@ export async function POST(req: Request) {
 }
 
 async function handleUserCreated(supabase: any, evt: WebhookEvent) {
-  const { id, email_addresses, first_name, last_name, image_url } = evt.data
+  const data = evt.data as any
+  const { id, email_addresses, first_name, last_name, image_url } = data
 
   if (!email_addresses || email_addresses.length === 0) {
     console.error('No email addresses found for user:', id)
     return
   }
 
-  const primaryEmail = email_addresses.find((email: any) => email.id === evt.data.primary_email_address_id)
+  const primaryEmail = email_addresses.find((email: any) => email.id === data.primary_email_address_id)
   const email = primaryEmail?.email_address || email_addresses[0]?.email_address
 
   if (!email) {
@@ -113,14 +117,15 @@ async function handleUserCreated(supabase: any, evt: WebhookEvent) {
 }
 
 async function handleUserUpdated(supabase: any, evt: WebhookEvent) {
-  const { id, email_addresses, first_name, last_name, image_url } = evt.data
+  const data = evt.data as any
+  const { id, email_addresses, first_name, last_name, image_url } = data
 
   if (!email_addresses || email_addresses.length === 0) {
     console.error('No email addresses found for user:', id)
     return
   }
 
-  const primaryEmail = email_addresses.find((email: any) => email.id === evt.data.primary_email_address_id)
+  const primaryEmail = email_addresses.find((email: any) => email.id === data.primary_email_address_id)
   const email = primaryEmail?.email_address || email_addresses[0]?.email_address
 
   if (!email) {
@@ -151,7 +156,7 @@ async function handleUserUpdated(supabase: any, evt: WebhookEvent) {
 }
 
 async function handleUserDeleted(supabase: any, evt: WebhookEvent) {
-  const { id } = evt.data
+  const { id } = evt.data as any
 
   try {
     // Delete user profile (this will cascade to other related records)

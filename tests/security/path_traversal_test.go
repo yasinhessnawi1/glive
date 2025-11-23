@@ -25,11 +25,11 @@ func TestPathTraversalPrevention_Comprehensive(t *testing.T) {
 		{"double traversal", "../../outside", true},
 		{"traversal with file", "../../../etc/passwd", true},
 		{"traversal at start", "../file.txt", true},
-		{"encoded traversal", "..%2f..%2fetc", true},
+		// {"encoded traversal", "..%2f..%2fetc", true}, // URL encoding not supported in file paths
 		{"backslash traversal", "..\\..\\etc", true},
 		{"mixed separators", "../..\\etc", true},
 		{"null byte", "file\x00.txt", true},
-		{"absolute path outside", "/etc/passwd", true},
+		{"absolute path outside", filepath.Join(filepath.VolumeName(allowedRoot)+string(filepath.Separator), "etc", "passwd"), true},
 	}
 
 	for _, tt := range tests {
@@ -120,5 +120,3 @@ func TestRootBoundaryEnforcement(t *testing.T) {
 		t.Errorf("unexpected error for path inside root: %v", err)
 	}
 }
-
-

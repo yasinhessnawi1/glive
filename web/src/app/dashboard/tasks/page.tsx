@@ -556,7 +556,7 @@ export default function TasksPage() {
               className="max-w-sm"
             />
           </div>
-          <Select value={filter} onValueChange={setFilter}>
+          <Select value={filter} onValueChange={(v) => setFilter(v as any)}>
             <SelectTrigger className="w-[180px]">
               <Filter className="mr-2 h-4 w-4" />
               <SelectValue />
@@ -568,7 +568,7 @@ export default function TasksPage() {
               <SelectItem value="overdue">Overdue</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={dateRange} onValueChange={setDateRange}>
+          <Select value={dateRange} onValueChange={(v) => setDateRange(v as any)}>
             <SelectTrigger className="w-[140px]">
               <SelectValue />
             </SelectTrigger>

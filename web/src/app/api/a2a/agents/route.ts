@@ -8,10 +8,16 @@ import { auth } from '@clerk/nextjs/server'
 import { createDatabaseService } from '@/lib/database'
 import OpenAI from 'openai'
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-})
+// Lazy initialize OpenAI client to avoid build-time errors
+let openai: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY || '',
+    })
+  }
+  return openai
+}
 
 interface Agent {
   id: string
@@ -683,8 +689,8 @@ function calculateCoordinationEffectiveness(contexts: any[]): number {
 }
 
 function generatePerformanceRecommendations(contexts: any[]): string[] {
-  const recommendations = []
-  
+  const recommendations: string[] = []
+
   if (contexts.length < 10) {
     recommendations.push('Increase agent utilization by delegating more tasks')
   }

@@ -3,8 +3,6 @@
  * Provides AI chat assistance integrated with the AIaaS platform
  */
 
-import { CopilotRuntimeClient } from '@copilotkit/react-core'
-
 // CopilotKit configuration
 export const copilotConfig = {
   // Public API key for client-side operations
@@ -61,12 +59,12 @@ export const copilotConfig = {
   }
 }
 
-// Create CopilotKit runtime client
-export function createCopilotClient() {
-  return new CopilotRuntimeClient({
+// Get CopilotKit client configuration
+export function getCopilotClientConfig() {
+  return {
     url: copilotConfig.url,
     publicApiKey: copilotConfig.publicApiKey,
-  })
+  }
 }
 
 // Available CopilotKit actions for the platform

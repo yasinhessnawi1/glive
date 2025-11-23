@@ -297,10 +297,10 @@ export function useMCP(options: UseMCPOptions = {}): UseMCPReturn {
       }, timeout)
 
       // Clear timeout on successful connection
-      const originalOnOpen = connection.onopen
-      connection.onopen = (event) => {
+      const originalOnOpen = connection.onopen as ((event: Event) => void) | null
+      connection.onopen = (event: Event) => {
         clearTimeout(timeoutId)
-        originalOnOpen?.(event)
+        if (originalOnOpen) originalOnOpen(event)
       }
 
     } catch (error: any) {
@@ -692,9 +692,10 @@ export function useMCP(options: UseMCPOptions = {}): UseMCPReturn {
       const fullMessage = { ...message, id: messageId }
 
       // Set up response handler
-      const handleResponse = (event: MessageEvent) => {
+      const handleResponse = (event: Event) => {
         try {
-          const response = JSON.parse(event.data)
+          const messageEvent = event as MessageEvent
+          const response = JSON.parse(messageEvent.data)
           if (response.id === messageId) {
             connection.removeEventListener('message', handleResponse)
             if (response.error) {

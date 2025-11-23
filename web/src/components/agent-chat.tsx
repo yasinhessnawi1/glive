@@ -63,7 +63,6 @@ export function AgentChat({
   } = useAgentChat({
     url,
     apiKey,
-    transport,
     onMessage: (message) => {
       // Auto-scroll to bottom on new messages
       setTimeout(() => {

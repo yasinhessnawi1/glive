@@ -178,7 +178,7 @@ export default function WorkflowAnalytics({
     const totalApiCalls = filteredExecutions.reduce((sum, e) => sum + (e.metadata.apiCallsCount || 0), 0)
 
     // Execution trend data
-    const executionTrend = []
+    const executionTrend: { date: string; successful: number; failed: number; total: number }[] = []
     const days = dateRange === 'week' ? 7 : dateRange === 'month' ? 30 : dateRange === 'quarter' ? 90 : 365
     
     for (let i = days - 1; i >= 0; i--) {
@@ -257,7 +257,7 @@ export default function WorkflowAnalytics({
     }))
 
     // Cost trend
-    const costTrend = []
+    const costTrend: { date: string; cost: number }[] = []
     for (let i = 29; i >= 0; i--) {
       const date = subDays(now, i)
       const dayStart = startOfDay(date)
@@ -521,7 +521,7 @@ export default function WorkflowAnalytics({
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) => `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"

@@ -7,11 +7,11 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { 
-  Download, 
-  Print, 
-  Share, 
-  Edit, 
+import {
+  Download,
+  Printer,
+  Share,
+  Edit,
   Copy,
   FileText,
   Calendar,
@@ -95,7 +95,7 @@ export default function InvoiceViewer({
   const [showShareDialog, setShowShareDialog] = useState(false)
 
   const handlePrint = useReactToPrint({
-    content: () => printRef.current,
+    contentRef: printRef,
     documentTitle: `Invoice ${invoice.invoiceNumber}`,
   })
 
@@ -159,7 +159,7 @@ export default function InvoiceViewer({
             )}
             {printable && (
               <Button variant="outline" size="sm" onClick={handlePrint}>
-                <Print className="h-4 w-4 mr-2" />
+                <Printer className="h-4 w-4 mr-2" />
                 Print
               </Button>
             )}

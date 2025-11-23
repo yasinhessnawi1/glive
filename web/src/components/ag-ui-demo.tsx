@@ -81,7 +81,6 @@ export default function AGUIDemo() {
     sessionId,
   } = useAgent({
     url: backends[selectedBackend]?.url,
-    transport: 'sse',
     autoConnect: false,
     onConnect: () => {
       toast.success(`Connected to ${backends[selectedBackend]?.name}`)
@@ -97,7 +96,6 @@ export default function AGUIDemo() {
   // Tools-only agent for quick tool testing
   const toolAgent = useAgentTools({
     url: backends[selectedBackend]?.url,
-    transport: 'sse',
     autoConnect: false,
   })
 

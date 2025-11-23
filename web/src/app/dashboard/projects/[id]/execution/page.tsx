@@ -93,7 +93,7 @@ export default function ExecutionPage() {
     }
   }, [project, router]);
 
-  const { events, connectionState, metrics, isConnected, projectNotFound, clearEvents, reconnect } = useExecutionStream(projectId, handleProjectNotFound);
+  const { events, connectionState, metrics, isConnected, clearEvents, reconnect } = useExecutionStream(projectId);
   const { getProject, startProject, stopProject, loading } = useGliveAPI();
 
   useEffect(() => {
@@ -149,13 +149,13 @@ export default function ExecutionPage() {
   };
 
   const toggleLevel = (level: LogLevel) => {
-    setSelectedLevels((prev) =>
-      prev.includes(level) ? prev.filter((l) => l !== level) : [...prev, level]
+    setSelectedLevels((prev: LogLevel[]) =>
+      prev.includes(level) ? prev.filter((l: LogLevel) => l !== level) : [...prev, level]
     );
   };
 
   const toggleCommandCollapse = (commandId: string) => {
-    setCollapsedCommands((prev) => {
+    setCollapsedCommands((prev: Set<string>) => {
       const next = new Set(prev);
       if (next.has(commandId)) {
         next.delete(commandId);
@@ -549,7 +549,7 @@ export default function ExecutionPage() {
                     <Input
                       placeholder="Search logs..."
                       value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
                       className="flex-1 bg-slate-900 border-slate-700"
                     />
                   </div>
@@ -619,7 +619,7 @@ export default function ExecutionPage() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {filteredEvents.map((event, index) => renderEvent(event, index))}
+                    {filteredEvents.map((event: ExecutionEvent, index: number) => renderEvent(event, index))}
                     <div ref={outputEndRef} />
                   </div>
                 )}
