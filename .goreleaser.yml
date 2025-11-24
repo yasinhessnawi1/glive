@@ -3,6 +3,8 @@ version: 2
 builds:
   - main: ./cmd/glive
     binary: glive
+    env:
+      - CGO_ENABLED=0
     goos:
       - linux
       - darwin
@@ -15,6 +17,8 @@ builds:
       - -X github.com/glive/cmd/glive/cmd.version={{.Version}}
       - -X github.com/glive/cmd/glive/cmd.commit={{.Commit}}
       - -X github.com/glive/cmd/glive/cmd.date={{.Date}}
+    tags:
+      - noclipboard
 
 archives:
   - formats: [tar.gz, zip]

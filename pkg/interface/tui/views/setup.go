@@ -11,7 +11,6 @@ import (
 	"github.com/glive/domain/values"
 	"github.com/glive/interface/tui"
 	"github.com/glive/interface/tui/components"
-	"golang.design/x/clipboard"
 )
 
 // SetupView represents the project setup wizard view
@@ -119,14 +118,20 @@ func (s *SetupView) readClipboardCmd() tea.Cmd {
 				}
 			}()
 
+			// Check if clipboard is available
+			if !clipboardAvailable() {
+				resultChan <- ClipboardReadMsg{URL: ""}
+				return
+			}
+
 			// Initialize clipboard
-			if err := clipboard.Init(); err != nil {
+			if err := initClipboard(); err != nil {
 				resultChan <- ClipboardReadMsg{URL: ""}
 				return
 			}
 
 			// Read clipboard content - only read text format
-			content := clipboard.Read(clipboard.FmtText)
+			content := readClipboard()
 			if len(content) == 0 {
 				// Clipboard might contain non-text content (image, file, etc.)
 				resultChan <- ClipboardReadMsg{URL: ""}

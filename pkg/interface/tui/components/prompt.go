@@ -7,7 +7,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/glive/interface/tui"
-	"golang.design/x/clipboard"
 )
 
 // TextInput represents a text input field
@@ -96,12 +95,12 @@ func (t *TextInput) Update(msg tea.Msg) (*TextInput, tea.Cmd) {
 func (t *TextInput) pasteFromClipboard() tea.Cmd {
 	return func() tea.Msg {
 		// Initialize clipboard
-		if err := clipboard.Init(); err != nil {
+		if err := initClipboard(); err != nil {
 			return PasteMsg{Text: ""}
 		}
 
 		// Read clipboard content - only read text format
-		content := clipboard.Read(clipboard.FmtText)
+		content := readClipboard()
 		if len(content) == 0 {
 			// Clipboard might contain non-text content (image, file, etc.)
 			return PasteMsg{Text: ""}
