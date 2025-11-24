@@ -118,9 +118,20 @@ fi
 if command -v glive &> /dev/null; then
     echo -e "${GREEN}GLive installed successfully!${NC}"
     echo ""
-    glive --help 2>/dev/null || echo "Run 'glive --help' to get started"
 else
     echo -e "${YELLOW}Installation complete. You may need to add $INSTALL_DIR to your PATH.${NC}"
     echo "Add this to your ~/.bashrc or ~/.zshrc:"
     echo "  export PATH=\"\$PATH:$INSTALL_DIR\""
+    echo ""
 fi
+
+# Show usage instructions
+echo -e "${GREEN}Usage:${NC}"
+echo "  glive <github-url>        Clone and set up a GitHub project"
+echo "  glive user/repo           Short format (e.g., glive facebook/react)"
+echo ""
+echo -e "${GREEN}Examples:${NC}"
+echo "  glive https://github.com/user/repo"
+echo "  glive user/repo"
+echo "  glive --help"
+echo ""

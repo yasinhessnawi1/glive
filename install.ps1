@@ -112,7 +112,16 @@ if (Test-Path (Join-Path $InstallDir $BinaryName)) {
             Write-Host ""
         }
     }
-    Write-Host "Then run 'glive --help' to get started." -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "Usage:" -ForegroundColor Cyan
+    Write-Host "  glive <github-url>        Clone and set up a GitHub project"
+    Write-Host "  glive user/repo           Short format (e.g., glive facebook/react)"
+    Write-Host ""
+    Write-Host "Examples:" -ForegroundColor Cyan
+    Write-Host "  glive https://github.com/user/repo"
+    Write-Host "  glive user/repo"
+    Write-Host "  glive --help"
+    Write-Host ""
 } else {
     Write-Host "Installation may have failed. Please check manually." -ForegroundColor Red
 }
