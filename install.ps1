@@ -75,10 +75,19 @@ catch {
 
 # Add to PATH if not already there
 $CurrentPath = [Environment]::GetEnvironmentVariable("Path", "User")
+$PathUpdated = $false
 if ($CurrentPath -notlike "*$InstallDir*") {
     Write-Host "Adding $InstallDir to PATH..." -ForegroundColor Yellow
-    [Environment]::SetEnvironmentVariable("Path", "$CurrentPath;$InstallDir", "User")
-    $env:Path = "$env:Path;$InstallDir"
+    try {
+        [Environment]::SetEnvironmentVariable("Path", "$CurrentPath;$InstallDir", "User")
+        $env:Path = "$env:Path;$InstallDir"
+        $PathUpdated = $true
+        Write-Host "PATH updated successfully!" -ForegroundColor Green
+    }
+    catch {
+        Write-Host "Failed to update PATH automatically." -ForegroundColor Red
+        $PathUpdated = $false
+    }
 }
 
 # Verify installation
@@ -87,7 +96,23 @@ if (Test-Path (Join-Path $InstallDir $BinaryName)) {
     Write-Host "GLive installed successfully!" -ForegroundColor Green
     Write-Host "Location: $InstallDir\$BinaryName"
     Write-Host ""
-    Write-Host "Please restart your terminal, then run 'glive --help' to get started." -ForegroundColor Cyan
+
+    if ($PathUpdated) {
+        Write-Host "PATH has been updated. Please restart your terminal for changes to take effect." -ForegroundColor Cyan
+    } else {
+        # Check if it's actually in PATH now
+        $VerifyPath = [Environment]::GetEnvironmentVariable("Path", "User")
+        if ($VerifyPath -notlike "*$InstallDir*") {
+            Write-Host "To use 'glive' from anywhere, add this to your PATH:" -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "  $InstallDir" -ForegroundColor White
+            Write-Host ""
+            Write-Host "Run this command to add it now:" -ForegroundColor Yellow
+            Write-Host '  [Environment]::SetEnvironmentVariable("Path", $env:Path + ";' + $InstallDir + '", "User")' -ForegroundColor White
+            Write-Host ""
+        }
+    }
+    Write-Host "Then run 'glive --help' to get started." -ForegroundColor Cyan
 } else {
     Write-Host "Installation may have failed. Please check manually." -ForegroundColor Red
 }
