@@ -35,6 +35,13 @@ jobs:
         with:
           go-version: '1.24'
 
+      - name: Remove clipboard dependency for release builds
+        run: |
+          cd cmd/glive
+          # Remove clipboard from go.mod since we use noclipboard tag
+          go mod edit -droprequire golang.design/x/clipboard
+          go mod tidy -tags=noclipboard
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:

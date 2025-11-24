@@ -9,9 +9,25 @@ builds:
       - linux
       - darwin
       - windows
+      - freebsd
     goarch:
       - amd64
       - arm64
+      - arm
+      - 386
+    goarm:
+      - 6
+      - 7
+    ignore:
+      # Ignore unsupported combinations
+      - goos: darwin
+        goarch: 386
+      - goos: darwin
+        goarch: arm
+      - goos: windows
+        goarch: arm
+      - goos: freebsd
+        goarch: arm64
     ldflags:
       - -s -w
       - -X github.com/glive/cmd/glive/cmd.version={{.Version}}
@@ -21,8 +37,11 @@ builds:
       - noclipboard
 
 archives:
-  - formats: [tar.gz, zip]
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
 
 checksum:
   name_template: 'checksums.txt'
@@ -36,3 +55,11 @@ changelog:
       regexp: "^fix"
     - title: Security
       regexp: "^security"
+
+release:
+  github:
+    owner: yasinhessnawi1
+    name: glive
+  draft: false
+  prerelease: auto
+  name_template: "GLive {{ .Version }}"
