@@ -40,7 +40,10 @@ jobs:
           cd cmd/glive
           # Remove clipboard from go.mod since we use noclipboard tag
           go mod edit -droprequire golang.design/x/clipboard
-          go mod tidy -tags=noclipboard
+          # Also remove from indirect dependencies
+          sed -i '/golang.design\/x\/clipboard/d' go.mod
+          sed -i '/golang.design\/x\/clipboard/d' go.sum
+          go mod tidy
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
