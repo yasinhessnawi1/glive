@@ -1,22 +1,18 @@
-//go:build !noclipboard
-
 package views
 
-import (
-	"golang.design/x/clipboard"
-)
-
-// initClipboard initializes the clipboard
+// initClipboard is a no-op - clipboard functionality not available
+// The golang.design/x/clipboard package requires CGO and X11 on Linux,
+// which prevents cross-compilation. Clipboard support was removed.
 func initClipboard() error {
-	return clipboard.Init()
+	return nil
 }
 
-// readClipboard reads text from the clipboard
+// readClipboard returns empty - clipboard functionality not available
 func readClipboard() []byte {
-	return clipboard.Read(clipboard.FmtText)
+	return nil
 }
 
-// clipboardAvailable returns whether clipboard is available
+// clipboardAvailable returns false - clipboard functionality not available
 func clipboardAvailable() bool {
-	return true
+	return false
 }

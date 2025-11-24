@@ -33,8 +33,6 @@ builds:
       - -X github.com/glive/cmd/glive/cmd.version={{.Version}}
       - -X github.com/glive/cmd/glive/cmd.commit={{.Commit}}
       - -X github.com/glive/cmd/glive/cmd.date={{.Date}}
-    tags:
-      - noclipboard
 
 archives:
   - formats: [tar.gz]

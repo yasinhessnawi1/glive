@@ -34,16 +34,11 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
-      - name: Remove clipboard dependency for release builds
-        run: |
-          # Remove clipboard from all go.mod and go.sum files
-          find . -name "go.mod" -exec sed -i '/golang.design\/x\/clipboard/d' {} \;
-          find . -name "go.sum" -exec sed -i '/golang.design\/x\/clipboard/d' {} \;
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
           version: '~> v2'
-          args: release --clean --skip=validate
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
