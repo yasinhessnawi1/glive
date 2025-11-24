@@ -88,8 +88,8 @@ func (s *MacOSSandbox) Execute(ctx context.Context, cmd Command) (*Result, error
 	if memoryLimit > 0 {
 		// Set memory limit (RLIMIT_AS)
 		var rlimit syscall.Rlimit
-		rlimit.Cur = memoryLimit
-		rlimit.Max = memoryLimit
+		rlimit.Cur = uint64(memoryLimit)
+		rlimit.Max = uint64(memoryLimit)
 		if err := syscall.Setrlimit(syscall.RLIMIT_AS, &rlimit); err != nil {
 			// Log but don't fail - resource limits may not be available
 			_ = err
@@ -102,11 +102,14 @@ func (s *MacOSSandbox) Execute(ctx context.Context, cmd Command) (*Result, error
 	execCmd.Stderr = &stderr
 
 	// Merge context timeout with config timeout
-	timeoutCtx := ctx
 	if s.config.Timeout > 0 {
 		var cancel context.CancelFunc
-		timeoutCtx, cancel = context.WithTimeout(ctx, s.config.Timeout)
+		ctx, cancel = context.WithTimeout(ctx, s.config.Timeout)
 		defer cancel()
+		// Rebuild command with new context
+		execCmd = s.buildCommand(ctx, cmd)
+		execCmd.Stdout = &stdout
+		execCmd.Stderr = &stderr
 	}
 
 	// Execute command
