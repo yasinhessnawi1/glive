@@ -15,11 +15,12 @@ import (
 
 // Client handles AI API interactions
 type Client struct {
-	apiKey     string
-	provider   string
-	endpoint   string
-	httpClient *http.Client
-	classifier *ErrorClassifier
+	apiKey           string
+	provider         string
+	endpoint         string
+	httpClient       *http.Client
+	classifier       *ErrorClassifier
+	triedStrategies  map[string][]string // Track strategies tried per command
 }
 
 // NewClient creates a new AI client
@@ -35,7 +36,8 @@ func NewClient(apiKey, provider, endpoint string) *Client {
 		httpClient: &http.Client{
 			Timeout: 60 * time.Second,
 		},
-		classifier: NewErrorClassifier(),
+		classifier:      NewErrorClassifier(),
+		triedStrategies: make(map[string][]string),
 	}
 }
 
@@ -288,12 +290,21 @@ func (c *Client) AutoFixError(command string, output string, errorMsg string, wo
 	fileList := getProjectFiles(workingDir)
 	fileListStr := strings.Join(fileList, "\n")
 
-	prompt := fmt.Sprintf(`A command failed. Can you fix it?
+	// Track what has been tried before for this command
+	cmdKey := command + ":" + errorMsg
+	tried := c.triedStrategies[cmdKey]
+	triedStr := ""
+	if len(tried) > 0 {
+		triedStr = fmt.Sprintf("\nPreviously tried strategies (DON'T repeat these):\n%s\n", strings.Join(tried, "\n- "))
+	}
+
+	prompt := fmt.Sprintf(`A command failed. Suggest a DIFFERENT recovery strategy than what was tried before.
 
 Command: %s
 Working Directory: %s
 Output: %s
 Error: %s
+%s
 
 Project Files (for context - DO NOT assume files are missing if they appear here):
 %s
@@ -303,23 +314,34 @@ Respond with JSON:
   "can_auto_fix": true/false,
   "fixed_command": "corrected command (only if can_auto_fix is true)",
   "explanation": "What was wrong and how you fixed it",
-  "confidence": "high|medium|low"
+  "confidence": "high|medium|low",
+  "strategy_type": "one of: fix_syntax, change_approach, skip_optional, use_alternative, modify_env, install_dependency, retry, other"
 }
 
-Rules:
-- IMPORTANT: Check the "Project Files" list above before assuming files are missing
-- If a file exists in the list, DO NOT try to create it
-- Only fix if you're confident in the solution (syntax errors, wrong interpreter, typos, missing dependencies)
-- Don't fix if it requires installing software or user decisions
-- Fixed command must be directly executable (executable + args only)
-- If the error is about missing files that DO exist in the project, the issue is likely a path or import problem
+Recovery Strategy Guidelines (try different approaches each time):
+1. Fix syntax/typos in the command
+2. Use alternative commands (e.g., 'cat' instead of 'copy', PowerShell instead of cmd)
+3. Skip optional/non-critical commands (env file setup, linting, etc.)
+4. Use development mode instead of production builds
+5. Change environment variables or configuration
+6. Install missing dependencies
+7. Retry with delays for network issues
+8. Use different package managers or tools
 
-Provide ONLY valid JSON.`, command, workingDir, output, errorMsg, fileListStr)
+Rules:
+- IMPORTANT: Provide a DIFFERENT strategy each time - don't repeat what was tried before
+- If command is optional (env setup, config, linting), suggest skipping it entirely
+- For file operations, try OS-specific alternatives (PowerShell on Windows, sh on Unix)
+- Always check the "Project Files" list before assuming files are missing
+- Be creative - try workarounds, alternatives, and fallbacks
+- If all reasonable strategies exhausted, set can_auto_fix to false
+
+Provide ONLY valid JSON.`, command, workingDir, output, errorMsg, triedStr, fileListStr)
 
 	messages := []Message{
 		{
 			Role:    "system",
-			Content: "You are an expert at diagnosing and fixing command-line errors. Be conservative - only auto-fix simple, obvious issues. Always check the provided file list before assuming files don't exist.",
+			Content: "You are an expert at diagnosing and fixing command-line errors. You are creative and persistent - always try to find an alternative solution. Suggest skipping non-critical commands if needed. Provide different strategies each time.",
 		},
 		{
 			Role:    "user",
@@ -338,6 +360,7 @@ Provide ONLY valid JSON.`, command, workingDir, output, errorMsg, fileListStr)
 		FixedCommand string `json:"fixed_command"`
 		Explanation  string `json:"explanation"`
 		Confidence   string `json:"confidence"`
+		StrategyType string `json:"strategy_type"`
 	}
 
 	// Try to unmarshal
@@ -355,9 +378,19 @@ Provide ONLY valid JSON.`, command, workingDir, output, errorMsg, fileListStr)
 		}
 	}
 
-	// Only allow high/medium confidence fixes
-	if result.CanAutoFix && (result.Confidence == "high" || result.Confidence == "medium") {
-		return result.FixedCommand, result.Explanation, true, nil
+	// Track this strategy attempt
+	strategyDesc := fmt.Sprintf("%s: %s", result.StrategyType, result.Explanation)
+	c.triedStrategies[cmdKey] = append(c.triedStrategies[cmdKey], strategyDesc)
+
+	// Allow high/medium confidence fixes, or low confidence skip_optional strategies
+	if result.CanAutoFix {
+		if result.Confidence == "high" || result.Confidence == "medium" {
+			return result.FixedCommand, result.Explanation, true, nil
+		}
+		// Allow low confidence if it's a skip strategy
+		if result.StrategyType == "skip_optional" {
+			return result.FixedCommand, result.Explanation, true, nil
+		}
 	}
 
 	return "", result.Explanation, false, nil

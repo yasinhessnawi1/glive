@@ -141,6 +141,46 @@ export function useGliveAPI() {
     }
   }, [handleError]);
 
+  // Get download ZIP URL
+  const getDownloadZipURL = useCallback((id: string): string => {
+    return gliveAPI.getDownloadZipURL(id);
+  }, []);
+
+  // Get VS Code URLs
+  const getVSCodeURLs = useCallback(async (id: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const urls = await gliveAPI.getVSCodeURLs(id);
+      return urls;
+    } catch (err) {
+      handleError(err);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [handleError]);
+
+  // Get execution report
+  const getExecutionReport = useCallback(async (id: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const report = await gliveAPI.getExecutionReport(id);
+      return report;
+    } catch (err) {
+      handleError(err);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [handleError]);
+
+  // Get execution report markdown URL
+  const getExecutionReportMarkdownURL = useCallback((id: string): string => {
+    return gliveAPI.getExecutionReportMarkdownURL(id);
+  }, []);
+
   return {
     loading,
     error,
@@ -153,6 +193,13 @@ export function useGliveAPI() {
     cleanupProject,
     getConfig,
     updateConfig,
+    getDownloadZipURL,
+    getVSCodeURLs,
+    getExecutionReport,
+    getExecutionReportMarkdownURL,
   };
 }
+
+// Alias for backwards compatibility
+export const useGliveApi = useGliveAPI;
 

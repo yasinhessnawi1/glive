@@ -258,3 +258,46 @@ export interface EventStatistics {
   averageDuration?: number;
 }
 
+// Execution Milestone
+export type MilestoneStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'skipped';
+
+export interface ExecutionMilestone {
+  id: string;
+  name: string;
+  description: string;
+  status: MilestoneStatus;
+  startedAt?: number;
+  completedAt?: number;
+  duration?: number;
+  output?: string;
+  error?: string;
+}
+
+// AI Suggestion
+export interface AISuggestion {
+  id: string;
+  type: 'info' | 'warning' | 'action' | 'link';
+  title: string;
+  description: string;
+  actionUrl?: string;
+  actionLabel?: string;
+  priority: 'low' | 'medium' | 'high';
+}
+
+// Execution Summary
+export interface ExecutionSummary {
+  projectId: string;
+  projectName: string;
+  projectType: ProjectType;
+  status: 'running' | 'completed' | 'failed' | 'stopped';
+  startedAt?: number;
+  completedAt?: number;
+  totalDuration?: number;
+  milestones: ExecutionMilestone[];
+  suggestions: AISuggestion[];
+  previewUrl?: string;
+  previewPort?: number;
+  isWebProject: boolean;
+  nextSteps: string[];
+}
+

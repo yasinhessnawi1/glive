@@ -154,6 +154,8 @@ EXAMPLES:
 	rootCmd.AddCommand(cleanupCmd)
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(runCmd)
+	rootCmd.AddCommand(stopCmd)
 }
 
 func runProject(cmd *cobra.Command, args []string) {

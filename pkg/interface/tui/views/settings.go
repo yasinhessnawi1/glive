@@ -179,6 +179,12 @@ func (s *SettingsView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 
 	// Normal navigation
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		// Reset viewport to top when terminal is resized
+		s.viewportStart = 0
+		s.selectedIdx = 0
+		return s, nil
+	
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc", "q":
@@ -287,10 +293,6 @@ func (s *SettingsView) saveSetting(idx int, value string) error {
 
 // View renders the settings view
 func (s *SettingsView) View() string {
-	if s.state.Width < 80 || s.state.Height < 16 {
-		return "Terminal too small. Please resize."
-	}
-
 	var sections []string
 
 	// Header

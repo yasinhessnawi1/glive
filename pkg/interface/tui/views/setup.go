@@ -13,6 +13,13 @@ import (
 	"github.com/glive/interface/tui/components"
 )
 
+// ExecutionModeOption represents an execution mode option
+type ExecutionModeOption struct {
+	Name        string
+	Description string
+	Value       string
+}
+
 // SetupView represents the project setup wizard view
 type SetupView struct {
 	state               *tui.AppState
@@ -25,6 +32,8 @@ type SetupView struct {
 	lastInputTime       time.Time       // For debouncing validation
 	checkedClipboard    map[string]bool // Cache of checked clipboard values
 	clipboardCheckCount int             // Number of clipboard checks performed
+	modeIndex           int             // Current selected mode index
+	modes               []ExecutionModeOption
 }
 
 // NewSetupView creates a new setup view
@@ -36,6 +45,13 @@ func NewSetupView(state *tui.AppState) *SetupView {
 	}
 	input.Focus()
 
+	// Define execution modes
+	modes := []ExecutionModeOption{
+		{Name: "Auto", Description: "Fully automatic - AI handles everything", Value: "auto"},
+		{Name: "Assisted", Description: "Approve each command before execution", Value: "assisted"},
+		{Name: "Manual", Description: "Show step-by-step instructions only", Value: "manual"},
+	}
+
 	return &SetupView{
 		state:               state,
 		step:                1,
@@ -45,6 +61,8 @@ func NewSetupView(state *tui.AppState) *SetupView {
 		lastInputTime:       time.Now(),
 		checkedClipboard:    make(map[string]bool),
 		clipboardCheckCount: 0,
+		modeIndex:           0, // Default to auto
+		modes:               modes,
 	}
 }
 
@@ -272,8 +290,19 @@ func (s *SetupView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 		case "esc", "q":
 			s.submitting = false
 			return s, tui.SwitchView(tui.ViewDashboard)
-		case "f", "F":
-			// Toggle force option
+		
+		// Arrow key navigation for modes
+		case "up":
+			// Navigate up through modes (wraps around)
+			s.modeIndex = (s.modeIndex - 1 + len(s.modes)) % len(s.modes)
+			return s, nil
+		case "down":
+			// Navigate down through modes (wraps around)
+			s.modeIndex = (s.modeIndex + 1) % len(s.modes)
+			return s, nil
+		
+		// Ctrl+F to toggle force option
+		case "ctrl+f":
 			s.force = !s.force
 			return s, nil
 		case "ctrl+v":
@@ -310,9 +339,10 @@ func (s *SetupView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 			s.validating = false
 			s.submitting = true
 
-			// Store the URL and force flag in state and switch to execution view
+			// Store the URL, force flag, and execution mode in state and switch to execution view
 			s.state.ProjectURL = url.String()
 			s.state.ForceSetup = s.force
+			s.state.ExecutionMode = s.modes[s.modeIndex].Value
 
 			// Switch to execution view
 			return s, tui.SwitchView(tui.ViewExecution)
@@ -352,10 +382,6 @@ func (s *SetupView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 
 // View renders the setup view
 func (s *SetupView) View() string {
-	if s.state.Width < 80 || s.state.Height < 16 {
-		return "Terminal too small. Please resize."
-	}
-
 	var sections []string
 
 	// Header
@@ -369,16 +395,35 @@ func (s *SetupView) View() string {
 		forceStatus = "ON"
 		forceStyle = s.state.Styles.Warning
 	}
-	forceIndicator := fmt.Sprintf("\nForce Re-clone: %s", forceStyle.Render(forceStatus))
+	forceIndicator := fmt.Sprintf("Force Re-clone: %s", forceStyle.Render(forceStatus))
 	if s.force {
 		forceIndicator += s.state.Styles.TextDim.Render(" (will re-clone even if project exists)")
 	}
+
+	// Mode selector
+	var modeLines []string
+	modeLines = append(modeLines, "Execution Mode:")
+	for i, mode := range s.modes {
+		prefix := "  "
+		modeStyle := s.state.Styles.TextDim
+		if i == s.modeIndex {
+			prefix = "▶ "
+			modeStyle = s.state.Styles.TextBold
+		}
+		modeLines = append(modeLines, fmt.Sprintf("%s[%d] %s - %s",
+			prefix,
+			i+1,
+			modeStyle.Render(mode.Name),
+			s.state.Styles.TextDim.Render(mode.Description),
+		))
+	}
+	modeSelector := strings.Join(modeLines, "\n")
 
 	// Instructions
 	instructions := tui.RenderBox(
 		s.state,
 		"Enter Repository",
-		fmt.Sprintf("Enter a GitHub repository URL or username/repo format:\n\n%s\n\n%s%s",
+		fmt.Sprintf("Enter a GitHub repository URL or username/repo format:\n\n%s\n\n%s\n%s\n\n%s",
 			s.textInput.Render(),
 			func() string {
 				if s.errorMsg != "" {
@@ -387,13 +432,14 @@ func (s *SetupView) View() string {
 				return s.state.Styles.TextDim.Render("Examples: vercel/next.js or https://github.com/vercel/next.js") + "\n"
 			}(),
 			forceIndicator,
+			modeSelector,
 		),
 		s.state.Width-4,
 	)
 	sections = append(sections, instructions)
 
 	// Footer
-	footer := tui.RenderFooter(s.state, "[Enter] Submit • [F] Toggle Force • [Ctrl+V] Paste • [Esc] Cancel")
+	footer := tui.RenderFooter(s.state, "[Enter] Submit • [↑↓] Mode • [Ctrl+F] Force • [Ctrl+V] Paste • [Esc] Cancel")
 	sections = append(sections, footer)
 
 	return lipgloss.JoinVertical(lipgloss.Left, sections...)

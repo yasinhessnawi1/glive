@@ -54,6 +54,13 @@ func (l *LogsView) Init() tea.Cmd {
 // Update handles messages
 func (l *LogsView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		// Reset viewport to top when terminal is resized
+		l.projectsViewportStart = 0
+		l.selectedIdx = 0
+		l.scrollOffset = 0
+		return l, nil
+	
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc", "q":
@@ -242,10 +249,6 @@ func (l *LogsView) loadLogsForProject() {
 
 // View renders the logs view
 func (l *LogsView) View() string {
-	if l.state.Width < 80 || l.state.Height < 16 {
-		return "Terminal too small. Please resize."
-	}
-
 	var sections []string
 
 	// Header

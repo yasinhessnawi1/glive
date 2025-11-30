@@ -222,14 +222,137 @@ func (s *NetworkRetryStrategy) Apply(cmd *types.Command, output, errorMsg string
 	return &fixedCmd, "Retrying after network error", nil
 }
 
+// EnvFileRecoveryStrategy handles .env file creation issues
+type EnvFileRecoveryStrategy struct{}
+
+func (s *EnvFileRecoveryStrategy) Name() string { return "Environment File Recovery" }
+func (s *EnvFileRecoveryStrategy) Description() string {
+	return "Handle missing .env files by reading .env.example or creating minimal config"
+}
+func (s *EnvFileRecoveryStrategy) Priority() int          { return 1 }
+func (s *EnvFileRecoveryStrategy) RequiresApproval() bool { return false }
+
+func (s *EnvFileRecoveryStrategy) CanHandle(ctx *ErrorContext) bool {
+	// Check if error is related to env file operations
+	return ctx.Category == ErrorCategoryRuntime || ctx.Category == ErrorCategoryUnknown
+}
+
+func (s *EnvFileRecoveryStrategy) Apply(cmd *types.Command, output, errorMsg string) (*types.Command, string, error) {
+	combinedText := strings.ToLower(output + "\n" + errorMsg)
+
+	// Check if this is an env file related error
+	envKeywords := []string{".env", "env.example", "copy", "cp", "environment"}
+	hasEnvError := false
+	for _, keyword := range envKeywords {
+		if strings.Contains(combinedText, keyword) {
+			hasEnvError = true
+			break
+		}
+	}
+
+	if !hasEnvError {
+		return nil, "", fmt.Errorf("not an env file error")
+	}
+
+	// Strategy 1: Try to read .env.example and create .env.local
+	// Strategy 2: Try multiple copy command variations (cp, copy, powershell)
+	// Strategy 3: Create empty .env.local file
+	// Strategy 4: Skip env file entirely
+
+	// Check if command was a copy operation
+	if strings.Contains(cmd.Command, "copy") || strings.Contains(cmd.Command, "cp") {
+		// Try OS-specific copy commands
+		var newCmd string
+		var explanation string
+
+		// Determine working directory
+		workDir := cmd.WorkingDir
+		if workDir == "" {
+			workDir = "."
+		}
+
+		// Try PowerShell on Windows, cat on Unix
+		if strings.Contains(cmd.Command, "copy") {
+			// Windows - try multiple approaches
+			newCmd = fmt.Sprintf(`if exist "%s\\.env.example" (powershell -Command "Copy-Item '%s\\.env.example' '%s\\.env.local'") else (echo # Auto-generated minimal .env.local > "%s\\.env.local")`,
+				workDir, workDir, workDir, workDir)
+			explanation = "Using PowerShell to copy .env.example, or creating minimal .env.local if example doesn't exist"
+		} else {
+			// Unix - try cat with fallback
+			newCmd = fmt.Sprintf(`if [ -f "%s/.env.example" ]; then cat "%s/.env.example" > "%s/.env.local"; else echo "# Auto-generated minimal .env.local" > "%s/.env.local"; fi`,
+				workDir, workDir, workDir, workDir)
+			explanation = "Using cat to copy .env.example, or creating minimal .env.local if example doesn't exist"
+		}
+
+		fixedCmd := &types.Command{
+			ID:          cmd.ID + "-env-recovery",
+			Description: "Recover from .env file operation failure",
+			Command:     newCmd,
+			WorkingDir:  cmd.WorkingDir,
+			Stage:       cmd.Stage,
+			Required:    false, // Not required - we can skip env files
+			Status:      types.CommandPending,
+			Env:         cmd.Env,
+		}
+
+		return fixedCmd, explanation, nil
+	}
+
+	return nil, "", fmt.Errorf("cannot apply env file recovery to this command")
+}
+
+// SkipNonCriticalCommandStrategy skips non-critical commands that fail
+type SkipNonCriticalCommandStrategy struct{}
+
+func (s *SkipNonCriticalCommandStrategy) Name() string { return "Skip Non-Critical Command" }
+func (s *SkipNonCriticalCommandStrategy) Description() string {
+	return "Skip optional commands that fail (like env file setup)"
+}
+func (s *SkipNonCriticalCommandStrategy) Priority() int          { return 10 }
+func (s *SkipNonCriticalCommandStrategy) RequiresApproval() bool { return false }
+
+func (s *SkipNonCriticalCommandStrategy) CanHandle(ctx *ErrorContext) bool {
+	// This is a last resort strategy
+	return true
+}
+
+func (s *SkipNonCriticalCommandStrategy) Apply(cmd *types.Command, output, errorMsg string) (*types.Command, string, error) {
+	// Check if command is related to optional setup tasks
+	optionalPatterns := []string{
+		"copy",
+		"cp",
+		".env",
+		"config",
+		"setup",
+	}
+
+	cmdLower := strings.ToLower(cmd.Command)
+	isOptional := false
+	for _, pattern := range optionalPatterns {
+		if strings.Contains(cmdLower, pattern) {
+			isOptional = true
+			break
+		}
+	}
+
+	if isOptional && !cmd.Required {
+		// Return nil to signal that we should skip this command
+		return nil, "Skipping optional command - project can run without it", nil
+	}
+
+	return nil, "", fmt.Errorf("command is critical and cannot be skipped")
+}
+
 // GetAllStrategies returns all available recovery strategies
 func GetAllStrategies() []RecoveryStrategy {
 	return []RecoveryStrategy{
-		&LintingBypassStrategy{},
-		&DevModeFallbackStrategy{},
-		&PortConflictStrategy{},
-		&MissingDependencyStrategy{},
-		&NetworkRetryStrategy{},
+		&EnvFileRecoveryStrategy{},      // Priority 1
+		&LintingBypassStrategy{},         // Priority 1
+		&DevModeFallbackStrategy{},       // Priority 2
+		&PortConflictStrategy{},          // Priority 3
+		&MissingDependencyStrategy{},     // Priority 4
+		&NetworkRetryStrategy{},          // Priority 5
+		&SkipNonCriticalCommandStrategy{}, // Priority 10 (last resort)
 	}
 }
 

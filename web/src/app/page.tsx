@@ -1,9 +1,9 @@
 import Link from "next/link";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Zap, Shield, Palette, Bot, Workflow, CreditCard, Code, Github, Star, Users, Rocket, Brain, GitBranch } from "lucide-react";
+import { Zap, Shield, Palette, Workflow, Code, Star, Users, Rocket, Brain, Download } from "lucide-react";
+import { QuickCloneInput } from "@/components/glive/quick-clone-input";
 
 export default function Home() {
   const features = [
@@ -51,17 +51,22 @@ export default function Home() {
             Stop struggling with setup instructions. Just GLive it.
           </p>
 
+          {/* Quick Clone Input - paste GitHub URL and go! */}
+          <div className="w-full pt-6">
+            <QuickCloneInput />
+          </div>
+
           <div className="flex flex-col sm:flex-row gap-4 pt-4">
             <Link href="/dashboard/projects/new">
-              <Button size="lg" className="text-lg px-8">
+              <Button size="lg" variant="outline" className="text-lg px-8">
                 <Zap className="mr-2 h-5 w-5" />
-                Get Started
+                Advanced Setup
               </Button>
             </Link>
-            <Link href="/dashboard">
-              <Button variant="outline" size="lg" className="text-lg px-8">
-                <GitBranch className="mr-2 h-5 w-5" />
-                Go to Dashboard
+            <Link href="/download">
+              <Button variant="ghost" size="lg" className="text-lg px-8">
+                <Download className="mr-2 h-5 w-5" />
+                Download CLI
               </Button>
             </Link>
           </div>

@@ -45,9 +45,8 @@ export default function NewProjectPage() {
 
     if (project) {
       setCreatedProject(project.id);
-      setTimeout(() => {
-        router.push(`/dashboard/projects/${project.id}/execution`);
-      }, 1500);
+      // Navigate immediately to avoid missing early logs
+      router.push(`/dashboard/projects/${project.id}/execution`);
     }
   };
 

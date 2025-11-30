@@ -53,6 +53,12 @@ func (d *DashboardView) Init() tea.Cmd {
 // Update handles messages
 func (d *DashboardView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		// Reset viewport to top when terminal is resized
+		d.viewportStart = 0
+		d.selectedIdx = 0
+		return d, nil
+	
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "n", "N":
@@ -134,10 +140,6 @@ func (d *DashboardView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 
 // View renders the dashboard
 func (d *DashboardView) View() string {
-	if d.state.Width < 80 || d.state.Height < 24 {
-		return "Terminal too small. Please resize."
-	}
-
 	var sections []string
 
 	// Header

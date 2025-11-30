@@ -18,7 +18,13 @@ import {
   Loader2,
   Calendar,
   Folder,
-  GitBranch
+  GitBranch,
+  Terminal,
+  Copy,
+  CheckCircle2,
+  RotateCcw,
+  FolderOpen,
+  Eye
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -31,6 +37,7 @@ export default function ProjectDetailsPage() {
   const wsRef = useRef<GliveWebSocket | null>(null);
 
   const projectId = params.id as string;
+  const [copiedPath, setCopiedPath] = useState(false);
 
   useEffect(() => {
     const loadProject = async () => {
@@ -68,15 +75,15 @@ export default function ProjectDetailsPage() {
     try {
       const success = await startProject(projectId);
       if (success) {
-        const updated = await getProject(projectId);
-        if (updated) setProject(updated);
+        // Redirect to execution monitor to see logs
+        router.push(`/dashboard/projects/${projectId}/execution`);
       } else {
         alert('Failed to start project. Please check the console for details.');
+        setActionLoading(null);
       }
     } catch (error) {
       console.error('Error starting project:', error);
       alert('Error starting project: ' + (error instanceof Error ? error.message : 'Unknown error'));
-    } finally {
       setActionLoading(null);
     }
   };
@@ -133,6 +140,65 @@ export default function ProjectDetailsPage() {
     } catch (error) {
       console.error('Error cleaning up project:', error);
       alert('Error cleaning up project: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCopyPath = async () => {
+    if (project?.local_path) {
+      await navigator.clipboard.writeText(project.local_path);
+      setCopiedPath(true);
+      setTimeout(() => setCopiedPath(false), 2000);
+    }
+  };
+
+  const handleRestart = async () => {
+    setActionLoading('restart');
+    try {
+      // First stop if running
+      if (['running', 'cloning', 'analyzing', 'installing'].includes(project?.status || '')) {
+        await stopProject(projectId);
+      }
+      // Then start
+      const success = await startProject(projectId);
+      if (success) {
+        const updated = await getProject(projectId);
+        if (updated) setProject(updated);
+      }
+    } catch (error) {
+      console.error('Error restarting project:', error);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReclone = async () => {
+    if (!confirm('This will delete the current project files and re-clone from GitHub. Continue?')) {
+      return;
+    }
+    setActionLoading('reclone');
+    try {
+      // Delete existing project
+      await deleteProject(projectId);
+      // Create new project with same URL
+      if (project?.github_url) {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'}/api/v1/projects`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            github_url: project.github_url,
+            mode: 'auto',
+            force_execution: true,
+          }),
+        });
+        if (response.ok) {
+          const newProject = await response.json();
+          router.push(`/dashboard/projects/${newProject.id}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error re-cloning project:', error);
     } finally {
       setActionLoading(null);
     }
@@ -239,7 +305,24 @@ export default function ProjectDetailsPage() {
                     <Folder className="h-4 w-4" />
                     Local Path
                   </div>
-                  <p className="text-sm font-mono">{project.local_path || 'N/A'}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-mono flex-1 truncate">{project.local_path || 'N/A'}</p>
+                    {project.local_path && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCopyPath}
+                        className="h-7 px-2"
+                        title="Copy path to clipboard"
+                      >
+                        {copiedPath ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -287,94 +370,178 @@ export default function ProjectDetailsPage() {
                   Manage your project execution and resources
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {['ready', 'stopped', 'pending', 'failed'].includes(project.status) && (
+              <CardContent className="space-y-6">
+                {/* Primary Actions */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-muted-foreground">Execution</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['ready', 'stopped', 'pending', 'failed'].includes(project.status) && (
+                      <Button
+                        onClick={handleStart}
+                        disabled={actionLoading !== null}
+                        className="w-full"
+                      >
+                        {actionLoading === 'start' ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Play className="h-4 w-4 mr-2" />
+                        )}
+                        Start
+                      </Button>
+                    )}
+
+                    {['running', 'cloning', 'analyzing', 'installing'].includes(project.status) && (
+                      <Button
+                        onClick={handleStop}
+                        disabled={actionLoading !== null}
+                        variant="destructive"
+                        className="w-full"
+                      >
+                        {actionLoading === 'stop' ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Square className="h-4 w-4 mr-2" />
+                        )}
+                        Stop
+                      </Button>
+                    )}
+
+                    <Button
+                      onClick={handleRestart}
+                      disabled={actionLoading !== null}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      {actionLoading === 'restart' ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                      )}
+                      Restart
+                    </Button>
+
+                    <Link href={`/dashboard/projects/${projectId}/execution`} className="w-full">
+                      <Button variant="outline" className="w-full">
+                        <Eye className="h-4 w-4 mr-2" />
+                        Monitor
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-muted-foreground">Quick Actions</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      onClick={handleCopyPath}
+                      disabled={!project.local_path}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      {copiedPath ? (
+                        <CheckCircle2 className="h-4 w-4 mr-2 text-green-500" />
+                      ) : (
+                        <Terminal className="h-4 w-4 mr-2" />
+                      )}
+                      Copy Path
+                    </Button>
+
+                    <Button
+                      onClick={handleReclone}
+                      disabled={actionLoading !== null}
+                      variant="outline"
+                      className="w-full"
+                    >
+                      {actionLoading === 'reclone' ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                      )}
+                      Re-clone
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Maintenance */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-muted-foreground">Maintenance</h4>
                   <Button
-                    onClick={handleStart}
+                    onClick={handleCleanup}
                     disabled={actionLoading !== null}
+                    variant="outline"
                     className="w-full"
                   >
-                    {actionLoading === 'start' ? (
+                    {actionLoading === 'cleanup' ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Starting...
+                        Cleaning...
                       </>
                     ) : (
                       <>
-                        <Play className="h-4 w-4 mr-2" />
-                        Start Project
+                        <FolderOpen className="h-4 w-4 mr-2" />
+                        Cleanup Resources
                       </>
                     )}
                   </Button>
-                )}
+                </div>
 
-                {['running', 'cloning', 'analyzing', 'installing'].includes(project.status) && (
+                {/* Danger Zone */}
+                <div className="space-y-3 pt-4 border-t">
+                  <h4 className="text-sm font-medium text-red-500">Danger Zone</h4>
                   <Button
-                    onClick={handleStop}
+                    onClick={handleDelete}
                     disabled={actionLoading !== null}
                     variant="destructive"
                     className="w-full"
                   >
-                    {actionLoading === 'stop' ? (
+                    {actionLoading === 'delete' ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Stopping...
+                        Deleting...
                       </>
                     ) : (
                       <>
-                        <Square className="h-4 w-4 mr-2" />
-                        Stop Project
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Project
                       </>
                     )}
                   </Button>
-                )}
-
-                <Button
-                  onClick={handleCleanup}
-                  disabled={actionLoading !== null}
-                  variant="outline"
-                  className="w-full"
-                >
-                  {actionLoading === 'cleanup' ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Cleaning...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Cleanup Resources
-                    </>
-                  )}
-                </Button>
-
-                <Link href={`/dashboard/projects/${projectId}/execution`} className="block w-full">
-                  <Button variant="outline" className="w-full">
-                    View Execution
-                  </Button>
-                </Link>
-
-                <Button
-                  onClick={handleDelete}
-                  disabled={actionLoading !== null}
-                  variant="destructive"
-                  className="w-full"
-                >
-                  {actionLoading === 'delete' ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Deleting...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete Project
-                    </>
-                  )}
-                </Button>
+                </div>
               </CardContent>
             </Card>
           </div>
+
+          {/* Tips Card */}
+          <Card className="mt-6 bg-primary/5 border-primary/20">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <Terminal className="h-5 w-5 text-primary mt-0.5" />
+                <div className="space-y-2">
+                  <h4 className="font-medium">CLI Tip</h4>
+                  <p className="text-sm text-muted-foreground">
+                    You can also run this project directly from the command line:
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-muted px-3 py-1.5 rounded text-sm font-mono">
+                      glive {project.github_url?.replace('https://github.com/', '')}
+                    </code>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const cmd = `glive ${project.github_url?.replace('https://github.com/', '')}`;
+                        navigator.clipboard.writeText(cmd);
+                      }}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>

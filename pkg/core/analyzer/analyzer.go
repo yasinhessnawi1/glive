@@ -16,7 +16,16 @@ type Analyzer struct {
 }
 
 // New creates a new Analyzer instance
+// IMPORTANT: projectPath must be a valid, non-empty absolute path
 func New(projectPath string) *Analyzer {
+	// Safety: If projectPath is empty, this would analyze current directory
+	// which could be the GLive agent itself - this is a bug that should be caught earlier
+	if projectPath == "" {
+		// Return analyzer that will fail on Analyze()
+		return &Analyzer{
+			projectPath: "",
+		}
+	}
 	return &Analyzer{
 		projectPath: projectPath,
 	}
@@ -24,6 +33,11 @@ func New(projectPath string) *Analyzer {
 
 // Analyze performs project analysis
 func (a *Analyzer) Analyze() (*types.AnalysisResult, error) {
+	// Safety check: Ensure projectPath is set
+	if a.projectPath == "" {
+		return nil, fmt.Errorf("project path is empty: cannot analyze without a valid path")
+	}
+
 	result := &types.AnalysisResult{
 		DetectedLanguages:  []string{},
 		PackageManagers:    []string{},

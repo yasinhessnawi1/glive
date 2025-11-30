@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Next.js 15 AIaaS Boilerplate",
-  description: "Modern AIaaS boilerplate with Next.js 15, TypeScript, Tailwind CSS, and Clerk Authentication",
+  title: "GLive - GitHub to Live",
+  description: "AI-powered tool to instantly clone and run any GitHub project. One command to go from repo to running application.",
 };
 
 export default function RootLayout({

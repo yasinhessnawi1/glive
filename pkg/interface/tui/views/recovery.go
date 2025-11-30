@@ -52,6 +52,12 @@ func (r *RecoveryView) Init() tea.Cmd {
 // Update handles messages
 func (r *RecoveryView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		// Reset viewport to top when terminal is resized
+		r.viewportStart = 0
+		r.selectedIdx = 0
+		return r, nil
+	
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc", "q":
@@ -152,10 +158,6 @@ func (r *RecoveryView) analyzeRecovery() {
 
 // View renders the recovery view
 func (r *RecoveryView) View() string {
-	if r.state.Width < 80 || r.state.Height < 16 {
-		return "Terminal too small. Please resize."
-	}
-
 	var sections []string
 
 	// Header

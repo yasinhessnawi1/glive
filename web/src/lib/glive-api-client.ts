@@ -109,6 +109,80 @@ export class GliveAPIClient {
     await this.post(`/api/v1/projects/${id}/cleanup`);
   }
 
+  // Download project as ZIP
+  getDownloadZipURL(id: string): string {
+    return `${this.baseURL}/api/v1/projects/${id}/download`;
+  }
+
+  // Get VS Code URLs for opening project
+  async getVSCodeURLs(id: string): Promise<{
+    local_vscode_url: string;
+    web_vscode_url: string;
+    github_dev_url: string;
+    project_path: string;
+  }> {
+    const response = await this.get<{
+      local_vscode_url: string;
+      web_vscode_url: string;
+      github_dev_url: string;
+      project_path: string;
+    }>(`/api/v1/projects/${id}/vscode`);
+    return response.data;
+  }
+
+  // Get execution report
+  async getExecutionReport(id: string): Promise<{
+    project_id: string;
+    project_name: string;
+    github_url: string;
+    local_path: string;
+    project_type: string;
+    status: string;
+    created_at: string;
+    total_duration: string;
+    steps: Array<{
+      step: number;
+      stage: string;
+      command?: string;
+      description: string;
+      output?: string;
+      duration?: string;
+      timestamp: string;
+      success: boolean;
+    }>;
+    summary: string;
+    next_steps: string[];
+  }> {
+    const response = await this.get<{
+      project_id: string;
+      project_name: string;
+      github_url: string;
+      local_path: string;
+      project_type: string;
+      status: string;
+      created_at: string;
+      total_duration: string;
+      steps: Array<{
+        step: number;
+        stage: string;
+        command?: string;
+        description: string;
+        output?: string;
+        duration?: string;
+        timestamp: string;
+        success: boolean;
+      }>;
+      summary: string;
+      next_steps: string[];
+    }>(`/api/v1/projects/${id}/report`);
+    return response.data;
+  }
+
+  // Get execution report as markdown download URL
+  getExecutionReportMarkdownURL(id: string): string {
+    return `${this.baseURL}/api/v1/projects/${id}/report?format=markdown`;
+  }
+
   // Configuration
   async getConfig(): Promise<Config> {
     const response = await this.get<Config>('/api/v1/config');

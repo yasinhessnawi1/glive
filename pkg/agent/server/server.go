@@ -165,6 +165,11 @@ func (s *Server) setupRoutes(rateLimiter *middleware.RateLimiter, h *handlers.Ha
 	api.Post("/projects/:id/stop", h.StopProject)
 	api.Post("/projects/:id/cleanup", h.CleanupProject)
 
+	// Project downloads and tools
+	api.Get("/projects/:id/download", h.DownloadProjectZip)
+	api.Get("/projects/:id/vscode", h.GetVSCodeURL)
+	api.Get("/projects/:id/report", h.GetExecutionReport)
+
 	// Configuration
 	api.Get("/config", handlers.GetConfig)
 	api.Put("/config", handlers.UpdateConfig)

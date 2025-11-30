@@ -97,7 +97,92 @@ func (e *Executor) Execute(ctx context.Context, cmd *types.Command, outputHandle
 		e.mu.Lock()
 		cmd.Status = types.CommandFailed
 		cmd.Error = err.Error()
+		originalCmd := cmd.Command
 		e.mu.Unlock()
+
+		// Try multi-strategy auto-fix for command start failures (e.g., command not found)
+		if e.aiClient != nil && e.mode == types.ModeAuto {
+			// Use new multi-strategy recovery
+			strategies, errorCtx, aiErr := e.aiClient.AutoFixWithStrategies(
+				cmd.Command,
+				"",
+				err.Error(),
+				workDir,
+			)
+
+			if aiErr == nil && len(strategies) > 0 {
+				if outputHandler != nil {
+					outputHandler(fmt.Sprintf("   🤖 AI classified error as: %s (confidence: %.0f%%)",
+						errorCtx.Category, errorCtx.Confidence*100))
+					outputHandler(fmt.Sprintf("   🔧 Attempting %d recovery %s...",
+						len(strategies),
+						map[bool]string{true: "strategy", false: "strategies"}[len(strategies) == 1]))
+				}
+
+				// Try each strategy in order
+				for i, strategy := range strategies {
+					if outputHandler != nil {
+						outputHandler(fmt.Sprintf("   ▶️  Strategy %d/%d: %s",
+							i+1, len(strategies), strategy.Name()))
+					}
+
+					// Apply the strategy
+					fixedCmd, explanation, applyErr := strategy.Apply(cmd, "", err.Error())
+					if applyErr != nil {
+						if outputHandler != nil {
+							outputHandler(fmt.Sprintf("   ⏭️  Skipped: %s", applyErr.Error()))
+						}
+						continue
+					}
+
+					// Check if this is a skip strategy
+					if fixedCmd == nil && strings.Contains(explanation, "Skipping") {
+						if outputHandler != nil {
+							outputHandler(fmt.Sprintf("   ⏭️  %s", explanation))
+						}
+						e.mu.Lock()
+						cmd.Status = types.CommandSkipped
+						e.mu.Unlock()
+						return nil // Consider this a success
+					}
+
+					if outputHandler != nil {
+						outputHandler(fmt.Sprintf("   💡 %s", explanation))
+					}
+
+					// Save original env
+					originalEnv := cmd.Env
+
+					// Apply the fix
+					cmd.Command = fixedCmd.Command
+					cmd.Env = fixedCmd.Env
+					cmd.Status = types.CommandPending
+
+					// Retry with fixed command
+					retryErr := e.Execute(ctx, cmd, outputHandler)
+					if retryErr == nil {
+						// Success!
+						if outputHandler != nil {
+							outputHandler(fmt.Sprintf("   ✅ Strategy '%s' succeeded!", strategy.Name()))
+						}
+						return nil
+					}
+
+					// This strategy didn't work, restore and try next
+					cmd.Command = originalCmd
+					cmd.Env = originalEnv
+					if outputHandler != nil {
+						outputHandler(fmt.Sprintf("   ❌ Strategy '%s' didn't resolve the issue", strategy.Name()))
+					}
+				}
+
+				// All strategies failed
+				if outputHandler != nil {
+					outputHandler("   ⚠️  All recovery strategies failed")
+				}
+			}
+		}
+
 		return fmt.Errorf("failed to start command: %w", err)
 	}
 
@@ -184,6 +269,17 @@ func (e *Executor) Execute(ctx context.Context, cmd *types.Command, outputHandle
 							outputHandler(fmt.Sprintf("   ⏭️  Skipped: %s", applyErr.Error()))
 						}
 						continue
+					}
+
+					// Check if this is a skip strategy
+					if fixedCmd == nil && strings.Contains(explanation, "Skipping") {
+						if outputHandler != nil {
+							outputHandler(fmt.Sprintf("   ⏭️  %s", explanation))
+						}
+						e.mu.Lock()
+						cmd.Status = types.CommandSkipped
+						e.mu.Unlock()
+						return nil // Consider this a success
 					}
 
 					if outputHandler != nil {

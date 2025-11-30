@@ -25,10 +25,11 @@ const DEFAULT_WS_URL = process.env.NEXT_PUBLIC_GLIVE_WS_URL || getDefaultWsUrl()
 
 // Connection configuration
 const CONNECTION_TIMEOUT = 30000; // 30 seconds
-const HEARTBEAT_INTERVAL = 15000; // 15 seconds
-const MAX_RECONNECT_ATTEMPTS = 10;
-const BASE_RECONNECT_DELAY = 1000; // 1 second
-const MAX_RECONNECT_DELAY = 30000; // 30 seconds
+const HEARTBEAT_INTERVAL = 25000; // 25 seconds (less than server's 30s ping)
+const HEARTBEAT_TIMEOUT = 60000; // 60 seconds timeout (matching server)
+const MAX_RECONNECT_ATTEMPTS = 20; // More attempts
+const BASE_RECONNECT_DELAY = 500; // 500ms (faster initial reconnect)
+const MAX_RECONNECT_DELAY = 10000; // 10 seconds max
 
 export type WSMessageHandler = (message: WSMessage) => void;
 export type ConnectionState = 'connecting' | 'connected' | 'disconnected' | 'error';
@@ -236,9 +237,9 @@ export class GliveWebSocket {
         try {
           this.ws.send(JSON.stringify({ type: 'ping' }));
 
-          // Check if we received pong recently
+          // Check if we received pong recently (use longer timeout)
           const timeSinceLastPong = Date.now() - this.lastPongTime;
-          if (timeSinceLastPong > HEARTBEAT_INTERVAL * 2) {
+          if (timeSinceLastPong > HEARTBEAT_TIMEOUT) {
             console.warn('Heartbeat timeout, reconnecting...');
             this.handleConnectionError({
               code: 'HEARTBEAT_TIMEOUT',

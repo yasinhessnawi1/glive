@@ -2,7 +2,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
-import { Github } from "lucide-react";
+import { Github, Download } from "lucide-react";
 import { UserButton, SignInButton, SignUpButton, useUser } from "@clerk/nextjs";
 
 export default function Navbar() {
@@ -30,6 +30,9 @@ export default function Navbar() {
           </Link>
           <Link href="/docs" className="text-sm font-medium transition-colors hover:text-primary">
             Docs
+          </Link>
+          <Link href="/download" className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-1">
+            <Download className="h-4 w-4" />Download
           </Link>
           <a href="https://github.com/yasinhessnawi1/glive" className="text-sm font-medium transition-colors hover:text-primary flex items-center gap-1" target="_blank" rel="noopener noreferrer">
             <Github className="h-4 w-4" />GitHub

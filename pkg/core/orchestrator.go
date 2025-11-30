@@ -11,13 +11,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/glive/core/ai"
 	"github.com/glive/core/analyzer"
 	"github.com/glive/core/executor"
 	"github.com/glive/core/repo"
 	"github.com/glive/core/scanner"
 	"github.com/glive/core/state"
 	"github.com/glive/core/types"
-	"github.com/glive/infrastructure/ai"
 )
 
 // Orchestrator coordinates the entire project execution flow
@@ -90,10 +90,9 @@ func (o *Orchestrator) RunProject(ctx context.Context, projectID, githubURL stri
 	o.log("🚀 GLive - GitHub to Live\n")
 	o.log("=" + repeatString("=", 50) + "\n\n")
 
-	// Helper function to both log to console AND stream through WebSocket
+	// Helper function to log to console (sendProgress should only be called for stage changes, not every log line)
 	logAndStream := func(message string) {
 		o.log(message)
-		o.sendProgress(callback, projectID, "running", message, 0)
 	}
 
 	// Step 1: Parse GitHub URL
@@ -107,6 +106,7 @@ func (o *Orchestrator) RunProject(ctx context.Context, projectID, githubURL stri
 
 	logAndStream(fmt.Sprintf("   ✓ Repository: %s/%s\n", repository.Owner, repository.Name))
 	logAndStream(fmt.Sprintf("   ✓ URL: %s\n\n", repository.URL))
+	o.sendProgressWithSuccess(callback, projectID, "parsing", "GitHub URL parsed successfully", 15, true)
 
 	// Create project
 	project := &Project{
@@ -121,6 +121,11 @@ func (o *Orchestrator) RunProject(ctx context.Context, projectID, githubURL stri
 	// Save initial state
 	if err := o.stateManager.SaveProject(project); err != nil {
 		return nil, fmt.Errorf("failed to save project: %w", err)
+	}
+
+	// Check for cancellation before Step 2
+	if err := o.checkCancellation(ctx, callback, project); err != nil {
+		return nil, err
 	}
 
 	// Step 2: Clone repository
@@ -155,6 +160,12 @@ func (o *Orchestrator) RunProject(ctx context.Context, projectID, githubURL stri
 
 	project.LocalPath = repository.GetLocalPath()
 	o.log(fmt.Sprintf("   ✓ Cloned to: %s\n\n", project.LocalPath))
+	o.sendProgressWithSuccess(callback, projectID, "cloning", "Repository cloned successfully", 25, true)
+
+	// Check for cancellation before Step 3
+	if err := o.checkCancellation(ctx, callback, project); err != nil {
+		return nil, err
+	}
 
 	// Step 3: Security scan
 	o.log("🛡️  Step 3: Security scanning...\n")
@@ -181,6 +192,12 @@ func (o *Orchestrator) RunProject(ctx context.Context, projectID, githubURL stri
 		}
 		o.log(fmt.Sprintf("   ✓ Scanned %d files\n\n", len(scanResult.Findings)))
 	}
+	o.sendProgressWithSuccess(callback, projectID, "scanning", "Security scan completed", 35, true)
+
+	// Check for cancellation before Step 4
+	if err := o.checkCancellation(ctx, callback, project); err != nil {
+		return nil, err
+	}
 
 	// Step 4: Analyze project
 	o.log("🔍 Step 4: Analyzing project...\n")
@@ -200,6 +217,12 @@ func (o *Orchestrator) RunProject(ctx context.Context, projectID, githubURL stri
 	o.log(fmt.Sprintf("   ✓ Package managers: %v\n", analysis.PackageManagers))
 	o.log(fmt.Sprintf("   ✓ Entry points: %v\n", analysis.EntryPoints))
 	o.log(fmt.Sprintf("   ✓ Dependencies: %d\n\n", len(analysis.Dependencies)))
+	o.sendProgressWithSuccess(callback, projectID, "analyzing", "Project analysis completed", 45, true)
+
+	// Check for cancellation before Step 5
+	if err := o.checkCancellation(ctx, callback, project); err != nil {
+		return nil, err
+	}
 
 	// Step 5: AI-enhanced analysis (if API key is configured)
 	if o.aiClient != nil {
@@ -243,9 +266,15 @@ func (o *Orchestrator) RunProject(ctx context.Context, projectID, githubURL stri
 			}
 			o.log("\n")
 		}
+		o.sendProgressWithSuccess(callback, projectID, "ai_analysis", "AI analysis completed", 55, true)
 	} else {
 		o.log("⚠️  Step 5: Skipping AI analysis (no API key configured)\n")
 		o.log("   ℹ️  Set API key to enable smart features: glive config set api-key YOUR_KEY\n\n")
+	}
+
+	// Check for cancellation before Step 6
+	if err := o.checkCancellation(ctx, callback, project); err != nil {
+		return nil, err
 	}
 
 	// Step 6: Execute setup commands
@@ -256,7 +285,7 @@ func (o *Orchestrator) RunProject(ctx context.Context, projectID, githubURL stri
 	o.stateManager.SaveProject(project)
 
 	if len(analysis.Commands) > 0 {
-		exec := executor.New(project.LocalPath, mode, nil) // TODO: Create adapter for infrastructure AI client
+		exec := executor.New(project.LocalPath, mode, o.aiClient)
 
 		for i, cmd := range analysis.Commands {
 			percentage := 60 + (i * 30 / len(analysis.Commands))
@@ -265,18 +294,45 @@ func (o *Orchestrator) RunProject(ctx context.Context, projectID, githubURL stri
 			o.log(fmt.Sprintf("   [%d/%d] %s\n", i+1, len(analysis.Commands), cmd.Description))
 			o.log(fmt.Sprintf("   $ %s\n", cmd.Command))
 
+			// Generate command ID and track start time
+			cmdID := fmt.Sprintf("cmd-%d-%d", i+1, time.Now().UnixNano())
+			cmdStartTime := time.Now()
+
+			// Send command_started event
+			o.sendCommandStarted(callback, projectID, cmdID, cmd.Command)
+
 			err := exec.Execute(ctx, &cmd, func(line string) {
 				o.log(fmt.Sprintf("      %s\n", line))
 			})
 
+			// Calculate duration
+			cmdDuration := time.Since(cmdStartTime).Milliseconds()
+
 			if err != nil {
+				// Check if context was cancelled (user stopped)
+				if ctx.Err() == context.Canceled {
+					o.log("   🛑 Execution stopped by user\n")
+					o.sendCommandComplete(callback, projectID, cmdID, 1, false, "Stopped by user", cmdDuration)
+					o.sendExecutionCompleted(callback, projectID, false, "Execution stopped by user")
+					project.Status = StatusStopped
+					o.stateManager.SaveProject(project)
+					return nil, ctx.Err()
+				}
+
+				// Send command_complete with failure
+				o.sendCommandComplete(callback, projectID, cmdID, 1, false, err.Error(), cmdDuration)
+
 				if cmd.Required {
+					// Send execution_completed with failure
+					o.sendExecutionCompleted(callback, projectID, false, "Required command failed: "+err.Error())
 					project.Status = StatusFailed
 					o.stateManager.SaveProject(project)
 					return nil, fmt.Errorf("required command failed: %w", err)
 				}
 				o.log(fmt.Sprintf("   ⚠️  Command failed (optional): %v\n", err))
 			} else {
+				// Send command_complete with success
+				o.sendCommandComplete(callback, projectID, cmdID, 0, true, "Command completed successfully", cmdDuration)
 				o.log("   ✓ Command completed successfully\n")
 			}
 			o.log("\n")
@@ -288,6 +344,9 @@ func (o *Orchestrator) RunProject(ctx context.Context, projectID, githubURL stri
 	// Step 7: Complete
 	o.log("✅ Step 7: Project ready!\n")
 	o.sendProgress(callback, projectID, "ready", "Project is ready", 100)
+
+	// Send execution_completed success event
+	o.sendExecutionCompleted(callback, projectID, true, "Project setup completed successfully")
 
 	project.Status = StatusReady
 	project.UpdatedAt = time.Now()
@@ -307,12 +366,96 @@ func (o *Orchestrator) StartProject(ctx context.Context, projectID string, callb
 		return fmt.Errorf("failed to load project: %w", err)
 	}
 
-	// Set callback for log streaming
+	// Set callback early so all logs are streamed to frontend
+	// Note: callback is cleared in the goroutine when execution completes
 	o.mu.Lock()
 	o.currentCallback = callback
 	o.currentProjectID = projectID
+	o.mu.Unlock()
+
+	// Helper to clone/reclone the project if needed
+	needsClone := false
+
+	// Validate LocalPath - this is critical to prevent running wrong commands
+	if project.LocalPath == "" {
+		// Try to reconstruct LocalPath from workspace and project name
+		if project.Name != "" && o.config.WorkspaceDir != "" {
+			project.LocalPath = filepath.Join(o.config.WorkspaceDir, project.Name)
+			// Verify the path exists
+			if _, err := os.Stat(project.LocalPath); os.IsNotExist(err) {
+				needsClone = true
+			} else {
+				// Save the corrected path
+				o.stateManager.SaveProject(project)
+				o.log(fmt.Sprintf("   ⚠️  Reconstructed project path: %s\n", project.LocalPath))
+			}
+		} else if project.GitHubURL != "" {
+			// We have a GitHub URL but no name/path - we need to clone
+			needsClone = true
+		} else {
+			return fmt.Errorf("project has no local path, name, or GitHub URL: cannot start")
+		}
+	}
+
+	// Double-check that the path exists
+	if !needsClone && project.LocalPath != "" {
+		if _, err := os.Stat(project.LocalPath); os.IsNotExist(err) {
+			needsClone = true
+		}
+	}
+
+	// Auto-clone if needed and we have a GitHub URL
+	if needsClone {
+		if project.GitHubURL == "" {
+			return fmt.Errorf("project directory does not exist and no GitHub URL to clone from")
+		}
+
+		o.log(fmt.Sprintf("   📦 Project not found locally, cloning from %s...\n", project.GitHubURL))
+		o.sendProgress(callback, projectID, "cloning", "Cloning repository (auto-recovery)", 10)
+
+		// Parse and clone the repository
+		repository, err := repo.ParseGitHubURL(project.GitHubURL)
+		if err != nil {
+			return fmt.Errorf("invalid GitHub URL: %w", err)
+		}
+
+		// Update project name if not set
+		if project.Name == "" {
+			project.Name = repository.Name
+		}
+
+		// Clone the repository
+		err = repository.Clone(o.config.WorkspaceDir, o.output)
+		if err != nil {
+			// If already exists, that's fine
+			if !strings.Contains(err.Error(), "already exists") {
+				return fmt.Errorf("failed to clone repository: %w", err)
+			}
+			o.log("   ℹ️  Repository already exists, using existing files\n")
+		}
+
+		// Update project path
+		project.LocalPath = repository.GetLocalPath()
+		project.Status = StatusReady
+		o.stateManager.SaveProject(project)
+		o.log(fmt.Sprintf("   ✓ Cloned to: %s\n", project.LocalPath))
+	}
+
+	// Safety check: Ensure we're not trying to run the GLive agent itself
+	// This prevents accidental recursive execution
+	agentMarkerFile := filepath.Join(project.LocalPath, "pkg", "agent", "main.go")
+	if _, err := os.Stat(agentMarkerFile); err == nil {
+		// Check if this is the GLive project by looking for specific markers
+		goModPath := filepath.Join(project.LocalPath, "go.mod")
+		if data, err := os.ReadFile(goModPath); err == nil {
+			if strings.Contains(string(data), "github.com/glive") {
+				return fmt.Errorf("cannot run GLive agent project through GLive - this would cause recursive execution")
+			}
+		}
+	}
 
 	// Check if already running
+	o.mu.Lock()
 	if _, exists := o.runningProjects[projectID]; exists {
 		o.mu.Unlock()
 		return fmt.Errorf("project is already running")
@@ -330,6 +473,7 @@ func (o *Orchestrator) StartProject(ctx context.Context, projectID string, callb
 	// Since we don't persist commands in Project struct (yet), let's re-analyze.
 	// It's fast enough for now.
 
+	o.log(fmt.Sprintf("   📂 Project path: %s\n", project.LocalPath))
 	projectAnalyzer := analyzer.New(project.LocalPath)
 	analysis, err := projectAnalyzer.Analyze()
 	if err != nil {
@@ -345,7 +489,7 @@ func (o *Orchestrator) StartProject(ctx context.Context, projectID string, callb
 			o.log("   ⚠️  Node modules not found, installing dependencies...\n")
 			o.sendProgress(callback, projectID, "installing", "Installing dependencies (auto-recovery)", 0)
 
-			exec := executor.New(project.LocalPath, ModeAuto, nil) // TODO: Create adapter
+			exec := executor.New(project.LocalPath, ModeAuto, o.aiClient)
 			for _, cmd := range analysis.Commands {
 				if cmd.Stage == "setup" {
 					o.log(fmt.Sprintf("   $ %s\n", cmd.Command))
@@ -420,16 +564,14 @@ func (o *Orchestrator) StartProject(ctx context.Context, projectID string, callb
 			o.mu.Unlock()
 		}()
 
-		exec := executor.New(project.LocalPath, ModeAuto, nil) // TODO: Create adapter
+		exec := executor.New(project.LocalPath, ModeAuto, o.aiClient)
 
 		o.log(fmt.Sprintf("   $ %s\n", runCmd.Command))
 
 		err := exec.Execute(runCtx, runCmd, func(line string) {
+			// Stream output to callback - o.log already sends to callback with "log" stage
+			// so we only use o.log here to avoid duplicate messages
 			o.log(fmt.Sprintf("      %s\n", line))
-
-			// Stream logs to callback
-			// We use a special stage "log" or just reuse "running" with the message
-			o.sendProgress(callback, projectID, "running", line, 0)
 		})
 
 		o.mu.Lock()
@@ -468,7 +610,29 @@ func (o *Orchestrator) StopProject(projectID string) error {
 	}
 
 	cancel()
+
+	// Update project status
+	if project, err := o.stateManager.LoadProject(projectID); err == nil {
+		project.Status = StatusStopped
+		o.stateManager.SaveProject(project)
+	}
+
 	return nil
+}
+
+// RegisterRunningProject registers a cancel function for a running project
+// This allows external callers (like API handlers) to make projects stoppable
+func (o *Orchestrator) RegisterRunningProject(projectID string, cancel context.CancelFunc) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	o.runningProjects[projectID] = cancel
+}
+
+// UnregisterRunningProject removes a project from the running projects map
+func (o *Orchestrator) UnregisterRunningProject(projectID string) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	delete(o.runningProjects, projectID)
 }
 
 // CleanupProject cleans up a project (stops and deletes)
@@ -511,14 +675,78 @@ func (o *Orchestrator) log(message string) {
 
 // sendProgress sends a progress update
 func (o *Orchestrator) sendProgress(callback ProgressCallback, projectID, stage, message string, percentage int) {
+	o.sendProgressWithSuccess(callback, projectID, stage, message, percentage, false)
+}
+
+func (o *Orchestrator) sendProgressWithSuccess(callback ProgressCallback, projectID, stage, message string, percentage int, success bool) {
 	if callback != nil {
 		callback(ProgressUpdate{
 			ProjectID:  projectID,
 			Stage:      stage,
 			Message:    message,
 			Percentage: percentage,
+			Success:    success,
 			Timestamp:  time.Now(),
 		})
+	}
+}
+
+// sendCommandStarted sends a command_started event
+func (o *Orchestrator) sendCommandStarted(callback ProgressCallback, projectID, cmdID, command string) {
+	if callback != nil {
+		callback(ProgressUpdate{
+			ProjectID: projectID,
+			Stage:     "command_started",
+			CommandID: cmdID,
+			Command:   command,
+			Timestamp: time.Now(),
+		})
+	}
+}
+
+// sendCommandComplete sends a command_complete event
+func (o *Orchestrator) sendCommandComplete(callback ProgressCallback, projectID, cmdID string, exitCode int, success bool, message string, duration int64) {
+	if callback != nil {
+		callback(ProgressUpdate{
+			ProjectID: projectID,
+			Stage:     "command_complete",
+			CommandID: cmdID,
+			ExitCode:  exitCode,
+			Success:   success,
+			Message:   message,
+			Duration:  duration,
+			Timestamp: time.Now(),
+		})
+	}
+}
+
+// sendExecutionCompleted sends an execution_completed event
+func (o *Orchestrator) sendExecutionCompleted(callback ProgressCallback, projectID string, success bool, message string) {
+	if callback != nil {
+		callback(ProgressUpdate{
+			ProjectID: projectID,
+			Stage:     "execution_completed",
+			Success:   success,
+			Message:   message,
+			Timestamp: time.Now(),
+		})
+	}
+}
+
+// checkCancellation checks if context was cancelled and handles it
+func (o *Orchestrator) checkCancellation(ctx context.Context, callback ProgressCallback, project *Project) error {
+	select {
+	case <-ctx.Done():
+		if ctx.Err() == context.Canceled {
+			o.log("   🛑 Execution stopped by user\n")
+			o.sendExecutionCompleted(callback, project.ID, false, "Execution stopped by user")
+			project.Status = StatusStopped
+			o.stateManager.SaveProject(project)
+			return ctx.Err()
+		}
+		return ctx.Err()
+	default:
+		return nil
 	}
 }
 

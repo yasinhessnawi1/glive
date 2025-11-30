@@ -2,6 +2,9 @@ package tui
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -32,17 +35,18 @@ type View interface {
 
 // AppState represents the global application state
 type AppState struct {
-	CurrentView ViewType
-	Views       map[ViewType]View
-	Width       int
-	Height      int
-	Styles      *Styles
-	Caps        *TerminalCapabilities
-	Container   *container.Container
-	Quitting    bool
-	Error       error
-	ProjectURL  string // GitHub URL for project execution
-	ForceSetup  bool   // Force re-clone even if project exists
+	CurrentView   ViewType
+	Views         map[ViewType]View
+	Width         int
+	Height        int
+	Styles        *Styles
+	Caps          *TerminalCapabilities
+	Container     *container.Container
+	Quitting      bool
+	Error         error
+	ProjectURL    string // GitHub URL for project execution
+	ForceSetup    bool   // Force re-clone even if project exists
+	ExecutionMode string // Execution mode: auto, assisted, manual
 }
 
 // App is the main TUI application
@@ -132,6 +136,16 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ErrorMsg:
 		a.state.Error = msg.Error
 		return a, nil
+
+	case RunProjectMsg:
+		// Exit TUI and run the project
+		a.state.Quitting = true
+		return a, tea.Sequence(tea.Quit, runProjectCommand(msg.Path, msg.Command))
+
+	case OpenFolderMsg:
+		// Open folder in file manager without exiting TUI
+		openFolderInFileManager(msg.Path)
+		return a, nil
 	}
 
 	// Delegate to current view
@@ -153,16 +167,6 @@ func (a *App) View() string {
 
 	if a.state.Error != nil {
 		return a.renderError()
-	}
-
-	// Check minimum size (only if we have received dimensions)
-	if a.state.Width > 0 && a.state.Height > 0 {
-		if a.state.Width < 80 || a.state.Height < 16 {
-			return a.renderSizeWarning()
-		}
-	} else {
-		// Still waiting for WindowSizeMsg, show loading with debug info
-		return fmt.Sprintf("Initializing... (size: %dx%d, view: %s)\n", a.state.Width, a.state.Height, a.state.CurrentView)
 	}
 
 	// Render current view
@@ -258,6 +262,17 @@ type SwitchViewMsg struct {
 // ErrorMsg is a message containing an error
 type ErrorMsg struct {
 	Error error
+}
+
+// RunProjectMsg signals to run a project (defined here to avoid import cycles)
+type RunProjectMsg struct {
+	Path    string
+	Command string
+}
+
+// OpenFolderMsg signals to open folder in file manager (defined here to avoid import cycles)
+type OpenFolderMsg struct {
+	Path string
 }
 
 // Helper functions
@@ -358,4 +373,50 @@ func RenderBox(state *AppState, title string, content string, width int) string 
 	}
 
 	return boxStyle.Render(content)
+}
+
+// runProjectCommand creates a command that runs after TUI exits
+func runProjectCommand(projectPath, command string) tea.Cmd {
+	return func() tea.Msg {
+		// Print what we're about to run
+		fmt.Printf("\n🚀 Running project in: %s\n", projectPath)
+		fmt.Printf("   Command: %s\n\n", command)
+
+		// Parse the command
+		parts := strings.Fields(command)
+		if len(parts) == 0 {
+			fmt.Println("❌ Invalid command")
+			return nil
+		}
+
+		// Create the command
+		cmd := exec.Command(parts[0], parts[1:]...)
+		cmd.Dir = projectPath
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Stdin = os.Stdin
+
+		// Run the command
+		if err := cmd.Run(); err != nil {
+			fmt.Printf("\n❌ Error running project: %v\n", err)
+		}
+
+		return nil
+	}
+}
+
+// openFolderInFileManager opens the folder in the system file manager
+func openFolderInFileManager(folderPath string) {
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "windows":
+		cmd = exec.Command("explorer", folderPath)
+	case "darwin":
+		cmd = exec.Command("open", folderPath)
+	default: // linux and others
+		cmd = exec.Command("xdg-open", folderPath)
+	}
+
+	_ = cmd.Start() // Fire and forget
 }

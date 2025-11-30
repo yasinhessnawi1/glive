@@ -223,6 +223,12 @@ func (h *HelpView) Init() tea.Cmd {
 // Update handles messages
 func (h *HelpView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		// Reset viewport to top when terminal is resized
+		h.viewportStart = 0
+		h.selectedSection = 0
+		return h, nil
+	
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc", "q", "?":
@@ -254,10 +260,6 @@ func (h *HelpView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 
 // View renders the help view
 func (h *HelpView) View() string {
-	if h.state.Width < 80 || h.state.Height < 16 {
-		return "Terminal too small. Please resize."
-	}
-
 	var sections []string
 
 	// Header
@@ -282,44 +284,67 @@ func (h *HelpView) adjustViewport() {
 		return
 	}
 
-	// Calculate visible height for sections
-	// Reserve space: header (3) + footer (2) + box borders (2) = ~7 lines
-	visibleSections := len(h.sections)
-	if h.state.Height > 0 {
-		// Estimate: each section takes ~8-12 lines on average (title + content + spacing)
-		availableHeight := h.state.Height - 7
-		visibleSections = availableHeight / 10 // More conservative estimate
-		if visibleSections < 2 {
-			visibleSections = 2
-		}
-		if visibleSections > len(h.sections) {
-			visibleSections = len(h.sections)
-		}
+	// Calculate available height for content
+	// Reserve space: header (3) + footer (3) + box borders/padding (4) = ~10 lines
+	availableHeight := h.state.Height - 10
+	if availableHeight < 5 {
+		availableHeight = 5 // Minimum height
 	}
 
-	// If at the beginning, always start at 0
-	if h.selectedSection == 0 {
+	// Calculate how many lines each section takes
+	sectionHeights := make([]int, len(h.sections))
+	totalLines := 0
+	for i, section := range h.sections {
+		// Title (1) + blank line (1) + content lines + spacing (1)
+		sectionHeight := 1 + 1 + len(section.Content) + 1
+		sectionHeights[i] = sectionHeight
+		totalLines += sectionHeight
+	}
+
+	// If all content fits, show everything from the start
+	if totalLines <= availableHeight {
 		h.viewportStart = 0
 		return
 	}
 
-	// Adjust viewport to keep selected section visible
-	if h.selectedSection < h.viewportStart {
-		h.viewportStart = h.selectedSection
-	} else if h.selectedSection >= h.viewportStart+visibleSections {
-		h.viewportStart = h.selectedSection - visibleSections + 1
+	// Calculate which sections to show to keep selected section visible
+	// Try to center the selected section when possible
+	selectedStart := 0
+	for i := 0; i < h.selectedSection; i++ {
+		selectedStart += sectionHeights[i]
 	}
 
-	// Ensure viewportStart is valid
-	if h.viewportStart < 0 {
-		h.viewportStart = 0
+	// Determine viewport start section
+	// Try to show selected section in the middle third of the screen
+	targetStart := selectedStart - (availableHeight / 3)
+	if targetStart < 0 {
+		targetStart = 0
 	}
-	maxStart := len(h.sections) - visibleSections
-	if maxStart < 0 {
-		maxStart = 0
+
+	// Find which section corresponds to targetStart
+	currentLine := 0
+	newViewportStart := 0
+	for i := 0; i < len(h.sections); i++ {
+		if currentLine >= targetStart {
+			newViewportStart = i
+			break
+		}
+		currentLine += sectionHeights[i]
 	}
-	if h.viewportStart > maxStart {
-		h.viewportStart = maxStart
+
+	h.viewportStart = newViewportStart
+
+	// Ensure we don't scroll past the end
+	if h.viewportStart > 0 {
+		// Calculate if we're showing too much empty space at the bottom
+		visibleLines := 0
+		for i := h.viewportStart; i < len(h.sections); i++ {
+			visibleLines += sectionHeights[i]
+		}
+		if visibleLines < availableHeight && h.viewportStart > 0 {
+			// Scroll back up to fill the screen
+			h.viewportStart--
+		}
 	}
 }
 
@@ -333,27 +358,32 @@ func (h *HelpView) renderContent() string {
 	// Adjust viewport
 	h.adjustViewport()
 
-	// Calculate visible sections (same calculation as adjustViewport)
-	visibleSections := len(h.sections)
-	if h.state.Height > 0 {
-		availableHeight := h.state.Height - 7
-		visibleSections = availableHeight / 10
-		if visibleSections < 2 {
-			visibleSections = 2
-		}
-		if visibleSections > len(h.sections) {
-			visibleSections = len(h.sections)
+	// Calculate available height for content
+	availableHeight := h.state.Height - 10
+	if availableHeight < 5 {
+		availableHeight = 5
+	}
+
+	// Calculate how many lines each section takes and determine visible sections
+	visibleSections := []int{}
+	currentLines := 0
+	for i := h.viewportStart; i < len(h.sections); i++ {
+		sectionHeight := 1 + 1 + len(h.sections[i].Content) + 1
+		if currentLines+sectionHeight <= availableHeight || len(visibleSections) == 0 {
+			visibleSections = append(visibleSections, i)
+			currentLines += sectionHeight
+		} else {
+			break
 		}
 	}
 
-	// Calculate visible range
+	// Render only visible sections
 	start := h.viewportStart
-	end := start + visibleSections
+	end := start + len(visibleSections)
 	if end > len(h.sections) {
 		end = len(h.sections)
 	}
 
-	// Only render visible sections
 	visibleSectionsList := h.sections[start:end]
 	lines := make([]string, 0)
 
@@ -392,7 +422,7 @@ func (h *HelpView) renderContent() string {
 	content := strings.Join(lines, "\n")
 
 	// Add scroll indicator if needed
-	if len(h.sections) > visibleSections {
+	if len(visibleSections) < len(h.sections) {
 		scrollInfo := fmt.Sprintf("\n(Showing sections %d-%d of %d)", start+1, end, len(h.sections))
 		content += "\n" + h.state.Styles.TextDim.Render(scrollInfo)
 	}
