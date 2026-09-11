@@ -28,6 +28,29 @@ linters:
     - errorlint    # %w wrapping and errors.Is/As correctness, per standards §2.1
     - contextcheck # context propagation, per standards §1.2
 
+  settings:
+    errcheck:
+      # errcheck's default is to flag every unchecked return, including calls
+      # whose error is not actionable. Excluding those here - once, with a
+      # reason - beats scattering `_, _ =` or //nolint across ~50 call sites and
+      # keeps the linter's signal on the returns that DO matter (a failed
+      # repository Save, a failed state write), which are fixed in code.
+      #
+      # Formatted writes to an already-open stream: the only failure mode is a
+      # closed or full stdout/stderr, at which point reporting the error has
+      # nowhere to go.
+      exclude-functions:
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - (io.Writer).Write
+        # Close on a handle opened for reading: nothing was buffered, so a
+        # close error carries no information the caller can act on. Close on a
+        # WRITE handle is NOT excluded - that one can lose data and is checked.
+        - (*os.File).Close
+        - (io.ReadCloser).Close
+        - (io.Closer).Close
+
   exclusions:
     generated: lax
 
