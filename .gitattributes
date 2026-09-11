@@ -1,0 +1,69 @@
+# Line-ending policy for the GLive monorepo.
+#
+# Without this file, git on Windows checks files out with CRLF and stores LF,
+# and every tool that rewrites a file (gofmt, golangci-lint --fix, go work sync)
+# re-lands it with the other ending. Both worktrees saw `go work sync` alone mark
+# go.work as modified with an empty content diff.
+#
+# text=auto: git decides what is text, normalises it to LF in the repository, and
+# checks it out with the platform's native ending. eol=lf pins the working-tree
+# ending to LF as well, so a file round-trips unchanged on every platform and a
+# diff only ever shows real edits.
+
+* text=auto eol=lf
+
+# Go
+*.go     text eol=lf
+go.mod   text eol=lf
+go.sum   text eol=lf
+go.work  text eol=lf
+go.work.sum text eol=lf
+
+# Shell scripts must be LF or they will not execute on Linux/macOS.
+*.sh     text eol=lf
+
+# Windows scripts must be CRLF: cmd.exe mis-parses LF-only .bat/.cmd files.
+*.bat    text eol=crlf
+*.cmd    text eol=crlf
+*.ps1    text eol=crlf
+
+# Config, docs, web sources
+*.json   text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.md     text eol=lf
+*.toml   text eol=lf
+*.ts     text eol=lf
+*.tsx    text eol=lf
+*.js     text eol=lf
+*.jsx    text eol=lf
+*.css    text eol=lf
+*.html   text eol=lf
+Dockerfile text eol=lf
+*.env.example text eol=lf
+
+# Binary: never normalise, never diff as text.
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.webp   binary
+*.svg    text eol=lf
+*.pdf    binary
+*.zip    binary
+*.gz     binary
+*.tar    binary
+*.exe    binary
+*.dll    binary
+*.so     binary
+*.dylib  binary
+*.woff   binary
+*.woff2  binary
+*.ttf    binary
+*.eot    binary
+
+# Generated lockfiles: text, but never worth reviewing as a diff.
+package-lock.json -diff
+pnpm-lock.yaml    -diff
+go.sum            -diff
