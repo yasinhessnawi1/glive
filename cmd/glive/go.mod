@@ -1,8 +1,6 @@
 module github.com/glive/cmd/glive
 
-go 1.24
-
-toolchain go1.24.10
+go 1.26.8
 
 require (
 	github.com/glive/core v0.0.0-00010101000000-000000000000

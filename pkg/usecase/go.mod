@@ -1,8 +1,8 @@
 module github.com/glive/usecase
 
-go 1.23.0
+go 1.26.8
 
-toolchain go1.24.10
+toolchain go1.26.8
 
 require (
 	github.com/glive/domain v0.0.0-00010101000000-000000000000

@@ -1,8 +1,6 @@
 module github.com/glive/interface
 
-go 1.23.0
-
-toolchain go1.24.10
+go 1.26.8
 
 require (
 	github.com/charmbracelet/bubbletea v0.25.0
