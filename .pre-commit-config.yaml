@@ -1,6 +1,10 @@
+# Versions here MUST match .github/workflows/ci.yml (GOLANGCI_VERSION) and the
+# .golangci.yml config format. Three different golangci-lint versions were in use
+# across CI, pre-commit and developer machines, so "clean" meant three different
+# things and a v2-format config fails to load on a v1 binary (AUDIT-F-05).
 repos:
   - repo: https://github.com/golangci/golangci-lint
-    rev: v1.55.2
+    rev: v2.13.2
     hooks:
       - id: golangci-lint
 

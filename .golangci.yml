@@ -1,0 +1,64 @@
+# golangci-lint configuration — GLive monorepo.
+#
+# Version: v2.13.2. The SAME version is pinned in .github/workflows/ci.yml and
+# .pre-commit-config.yaml; bump all of them together or the three gates disagree
+# about what "clean" means (that drift is AUDIT-F-05).
+#
+# This file is v2 format. v1 configs do not load on v2: `linters-settings` split
+# into `linters.settings` + `formatters.settings`, the formatting linters moved to
+# the `formatters` section, and `disable-all` became `default: none`.
+#
+# golangci-lint runs PER MODULE (it does not understand Go workspaces). CI loops
+# over `go list -m` output rather than a hand-maintained module list, so a new
+# module cannot be silently omitted from the gate.
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  # "standard" is the v2 default set: errcheck, govet, ineffassign, staticcheck,
+  # unused. Note gosimple no longer exists in v2 — it was folded into staticcheck.
+  default: standard
+
+  enable:
+    - gosec        # security: the threat model makes this non-optional
+    - bodyclose    # leaked HTTP response bodies — the AI client is full of them
+    - errorlint    # %w wrapping and errors.Is/As correctness, per standards §2.1
+    - contextcheck # context propagation, per standards §1.2
+
+  exclusions:
+    generated: lax
+
+    paths:
+      # --- deleted at GL0 T8 (2026-09-11) -----------------------------------
+      # These are the pkg/core twins of pkg/infrastructure packages. They have
+      # zero importers outside pkg/core/orchestrator.go and are removed wholesale
+      # once pkg/agent is routed through the usecase (GL0 T6 -> T8). Linting them
+      # now would mean fixing ~3,400 lines that are about to be deleted.
+      #
+      # REMOVE THIS BLOCK AT T8, together with the packages themselves.
+      # Tracked as AUDIT-F-24. Only pkg/core/config and pkg/core/types survive,
+      # and both are linted normally.
+      - pkg/core/ai/
+      - pkg/core/analyzer/
+      - pkg/core/executor/
+      - pkg/core/repo/
+      - pkg/core/scanner/
+      - pkg/core/state/
+      - pkg/core/orchestrator\.go$
+      - pkg/core/types\.go$
+      # --- end: deleted at GL0 T8 -------------------------------------------
+
+    rules:
+      # Test files legitimately ignore errors on setup helpers and use weak
+      # randomness; gosec's crypto rules do not apply to fixtures.
+      - path: _test\.go
+        linters:
+          - gosec
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
