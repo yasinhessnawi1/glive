@@ -28,7 +28,7 @@ type SettingItem struct {
 	Key         string
 	Label       string
 	Value       string
-	Type        string // "string", "int", "bool", "select"
+	Type        string   // "string", "int", "bool", "select"
 	Options     []string // For select type
 	Description string
 }
@@ -184,7 +184,7 @@ func (s *SettingsView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 		s.viewportStart = 0
 		s.selectedIdx = 0
 		return s, nil
-	
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc", "q":
@@ -205,7 +205,7 @@ func (s *SettingsView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 			// Start editing selected setting
 			if s.selectedIdx < len(s.settings) {
 				setting := s.settings[s.selectedIdx]
-				
+
 				// Handle select type differently
 				if setting.Type == "select" {
 					// Cycle through options
@@ -270,7 +270,7 @@ func (s *SettingsView) saveSetting(idx int, value string) error {
 	}
 
 	setting := s.settings[idx]
-	
+
 	// Convert value based on type
 	var valueToSet interface{} = value
 	switch setting.Type {
@@ -278,13 +278,13 @@ func (s *SettingsView) saveSetting(idx int, value string) error {
 		var err error
 		valueToSet, err = parseInt(value)
 		if err != nil {
-			return fmt.Errorf("invalid integer: %v", err)
+			return fmt.Errorf("invalid integer: %w", err)
 		}
 	case "bool":
 		var err error
 		valueToSet, err = parseBool(value)
 		if err != nil {
-			return fmt.Errorf("invalid boolean: %v", err)
+			return fmt.Errorf("invalid boolean: %w", err)
 		}
 	}
 
@@ -394,7 +394,7 @@ func (s *SettingsView) renderSettings() string {
 
 		// Format line
 		line := fmt.Sprintf("%s: %s", setting.Label, valueDisplay)
-		
+
 		// Add description
 		if setting.Description != "" {
 			line += fmt.Sprintf("  %s", s.state.Styles.TextDim.Render("("+setting.Description+")"))
@@ -416,7 +416,7 @@ func (s *SettingsView) renderSettings() string {
 	}
 
 	content := strings.Join(lines, "\n")
-	
+
 	// Add scroll indicator if needed
 	if len(s.settings) > visibleHeight {
 		scrollInfo := fmt.Sprintf("\n(Showing %d-%d of %d settings)", start+1, end, len(s.settings))
@@ -444,4 +444,3 @@ func parseBool(s string) (bool, error) {
 		return false, fmt.Errorf("invalid boolean value: %s", s)
 	}
 }
-

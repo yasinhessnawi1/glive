@@ -12,16 +12,16 @@ type ColorDepth int
 
 const (
 	ColorNone ColorDepth = iota // No color support
-	Color16                      // Basic ANSI 16 colors
-	Color256                     // Extended 256 colors
-	ColorTrue                    // 24-bit true color
+	Color16                     // Basic ANSI 16 colors
+	Color256                    // Extended 256 colors
+	ColorTrue                   // 24-bit true color
 )
 
 // TerminalCapabilities represents detected terminal capabilities
 type TerminalCapabilities struct {
-	Width        int
-	Height       int
-	ColorSupport ColorDepth
+	Width          int
+	Height         int
+	ColorSupport   ColorDepth
 	UnicodeSupport bool
 	MouseSupport   bool
 	IsTerminal     bool
@@ -31,7 +31,7 @@ type TerminalCapabilities struct {
 func DetectCapabilities() *TerminalCapabilities {
 	cap := &TerminalCapabilities{
 		IsTerminal:     isTerminal(),
-		UnicodeSupport: true, // Assume Unicode support by default
+		UnicodeSupport: true,  // Assume Unicode support by default
 		MouseSupport:   false, // Will be enabled explicitly if needed
 	}
 
@@ -123,7 +123,7 @@ func checkUnicodeSupport() bool {
 	// Most modern terminals support Unicode
 	// Check for known problematic terminals
 	termEnv := strings.ToLower(os.Getenv("TERM"))
-	
+
 	// Some old terminals don't support Unicode well
 	noUnicodeTerms := []string{"linux", "dumb", "vt100", "vt102", "vt220"}
 	for _, term := range noUnicodeTerms {
@@ -149,4 +149,3 @@ func (c *TerminalCapabilities) SupportsUnicode() bool {
 func (c *TerminalCapabilities) MinSize(minWidth, minHeight int) bool {
 	return c.Width >= minWidth && c.Height >= minHeight
 }
-

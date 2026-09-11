@@ -15,12 +15,12 @@ func EaseInOutCubic(t float64) float64 {
 	if t < 0.5 {
 		return 4 * t * t * t
 	}
-	return 1 - math.Pow(-2*t+2, 3)/2
+	return 1 - (-2*t+2)*(-2*t+2)*(-2*t+2)/2
 }
 
 // EaseOutCubic provides cubic ease-out
 func EaseOutCubic(t float64) float64 {
-	return 1 - math.Pow(1-t, 3)
+	return 1 - (1-t)*(1-t)*(1-t)
 }
 
 // EaseInCubic provides cubic ease-in
@@ -129,10 +129,10 @@ func NewPulsingAnimation(min, max float64, duration time.Duration, easing Easing
 func (p *PulsingAnimation) Value() float64 {
 	elapsed := time.Since(p.Start)
 	cycle := float64(elapsed) / float64(p.Duration)
-	
+
 	// Use sine wave for smooth oscillation
 	t := (math.Sin(cycle*2*math.Pi) + 1) / 2 // Normalize to 0-1
-	
+
 	eased := p.Easing(t)
 	return p.Min + (p.Max-p.Min)*eased
 }
@@ -141,4 +141,3 @@ func (p *PulsingAnimation) Value() float64 {
 func (p *PulsingAnimation) Reset() {
 	p.Start = time.Now()
 }
-

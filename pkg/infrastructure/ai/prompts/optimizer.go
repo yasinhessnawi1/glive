@@ -51,7 +51,7 @@ func (to *TokenOptimizer) PruneFileContext(files []File, relevantPaths []string,
 func (to *TokenOptimizer) formatFiles(files []File) string {
 	var builder strings.Builder
 	for _, file := range files {
-		builder.WriteString(fmt.Sprintf("File: %s\n", file.Path))
+		fmt.Fprintf(&builder, "File: %s\n", file.Path)
 		builder.WriteString(file.Content)
 		builder.WriteString("\n\n")
 	}
@@ -93,9 +93,9 @@ func (to *TokenOptimizer) CompressFrameworkOutput(output string) string {
 	// Keep only errors and warnings
 	lines := strings.Split(output, "\n")
 	filtered := make([]string, 0, len(lines))
-	
+
 	errorKeywords := []string{"error", "warn", "fail", "exception", "traceback", "fatal"}
-	
+
 	for _, line := range lines {
 		lineLower := strings.ToLower(line)
 		for _, keyword := range errorKeywords {
@@ -145,7 +145,7 @@ func (to *TokenOptimizer) OptimizePrompt(prompt string, maxTokens int) string {
 	}
 
 	result := strings.Join(optimized, "\n")
-	
+
 	// If still too long, truncate
 	if to.tokenCounter(result) > maxTokens {
 		ratio := float64(maxTokens) / float64(to.tokenCounter(result))
@@ -162,10 +162,10 @@ func (to *TokenOptimizer) OptimizePrompt(prompt string, maxTokens int) string {
 func (to *TokenOptimizer) RemoveRedundantWhitespace(text string) string {
 	// Replace multiple spaces with single space
 	text = regexp.MustCompile(` +`).ReplaceAllString(text, " ")
-	
+
 	// Replace multiple newlines with double newline max
 	text = regexp.MustCompile(`\n{3,}`).ReplaceAllString(text, "\n\n")
-	
+
 	return strings.TrimSpace(text)
 }
 
@@ -176,7 +176,7 @@ func (to *TokenOptimizer) ExtractKeyInformation(output string) string {
 
 	for _, line := range lines {
 		lineLower := strings.ToLower(line)
-		
+
 		// Keep lines with important keywords
 		importantKeywords := []string{
 			"error", "warning", "fail", "success", "complete",
@@ -202,4 +202,3 @@ func (to *TokenOptimizer) ExtractKeyInformation(output string) string {
 
 	return strings.Join(keyLines, "\n")
 }
-

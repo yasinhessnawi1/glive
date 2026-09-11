@@ -216,4 +216,3 @@ func (fs *SafeFileSystem) AddAllowedRoot(root string) error {
 	fs.allowedRoots = append(fs.allowedRoots, abs)
 	return nil
 }
-

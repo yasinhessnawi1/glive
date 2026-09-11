@@ -44,4 +44,3 @@ func initView(viewType tui.ViewType, state *tui.AppState) tui.View {
 		return nil
 	}
 }
-

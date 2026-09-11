@@ -18,7 +18,7 @@ func NewSimpleLogger(writer io.Writer) Logger {
 	if writer == nil {
 		writer = os.Stdout
 	}
-	
+
 	// Create structured logger with text format for backward compatibility
 	logger := logging.NewTextLogger(writer, logging.LevelInfo)
 	return &SimpleLogger{logger: logger}
@@ -42,4 +42,3 @@ func (l *SimpleLogger) Error(msg string, err error) {
 func (l *SimpleLogger) Debug(msg string) {
 	l.logger.Debug(msg)
 }
-

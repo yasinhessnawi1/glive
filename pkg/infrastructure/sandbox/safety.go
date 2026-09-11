@@ -66,5 +66,3 @@ func ValidateMountPoint(sandboxRoot string, mount MountPoint) error {
 
 	return nil
 }
-
-

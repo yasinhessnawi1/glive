@@ -4,36 +4,36 @@ import "fmt"
 
 // JSONSchema represents a JSON schema definition
 type JSONSchema struct {
-	Name       string                 `json:"name"`
-	Type       string                 `json:"type"`
-	Required   []string               `json:"required,omitempty"`
+	Name       string                    `json:"name"`
+	Type       string                    `json:"type"`
+	Required   []string                  `json:"required,omitempty"`
 	Properties map[string]SchemaProperty `json:"properties,omitempty"`
-	Items      *JSONSchema            `json:"items,omitempty"`
-	Enum       []interface{}          `json:"enum,omitempty"`
-	MinLength  *int                   `json:"minLength,omitempty"`
-	MaxLength  *int                   `json:"maxLength,omitempty"`
-	Minimum    *float64               `json:"minimum,omitempty"`
-	Maximum    *float64               `json:"maximum,omitempty"`
-	Pattern    string                 `json:"pattern,omitempty"`
-	MinItems   *int                   `json:"minItems,omitempty"`
-	MaxItems   *int                   `json:"maxItems,omitempty"`
+	Items      *JSONSchema               `json:"items,omitempty"`
+	Enum       []interface{}             `json:"enum,omitempty"`
+	MinLength  *int                      `json:"minLength,omitempty"`
+	MaxLength  *int                      `json:"maxLength,omitempty"`
+	Minimum    *float64                  `json:"minimum,omitempty"`
+	Maximum    *float64                  `json:"maximum,omitempty"`
+	Pattern    string                    `json:"pattern,omitempty"`
+	MinItems   *int                      `json:"minItems,omitempty"`
+	MaxItems   *int                      `json:"maxItems,omitempty"`
 }
 
 // SchemaProperty represents a property in a JSON schema
 type SchemaProperty struct {
-	Type        string                 `json:"type"`
-	Description string                 `json:"description,omitempty"`
-	Enum        []interface{}          `json:"enum,omitempty"`
-	MinLength   *int                   `json:"minLength,omitempty"`
-	MaxLength   *int                   `json:"maxLength,omitempty"`
-	Minimum     *float64               `json:"minimum,omitempty"`
-	Maximum     *float64               `json:"maximum,omitempty"`
-	Pattern     string                 `json:"pattern,omitempty"`
-	Items       *JSONSchema            `json:"items,omitempty"`
+	Type        string                    `json:"type"`
+	Description string                    `json:"description,omitempty"`
+	Enum        []interface{}             `json:"enum,omitempty"`
+	MinLength   *int                      `json:"minLength,omitempty"`
+	MaxLength   *int                      `json:"maxLength,omitempty"`
+	Minimum     *float64                  `json:"minimum,omitempty"`
+	Maximum     *float64                  `json:"maximum,omitempty"`
+	Pattern     string                    `json:"pattern,omitempty"`
+	Items       *JSONSchema               `json:"items,omitempty"`
 	Properties  map[string]SchemaProperty `json:"properties,omitempty"`
-	Required    []string               `json:"required,omitempty"`
-	MinItems    *int                   `json:"minItems,omitempty"`
-	MaxItems    *int                   `json:"maxItems,omitempty"`
+	Required    []string                  `json:"required,omitempty"`
+	MinItems    *int                      `json:"minItems,omitempty"`
+	MaxItems    *int                      `json:"maxItems,omitempty"`
 }
 
 // RecoveryPlanSchema returns the JSON schema for error recovery plans
@@ -47,8 +47,8 @@ func RecoveryPlanSchema() JSONSchema {
 	maxConfidence := 1.0
 
 	return JSONSchema{
-		Name: "RecoveryPlanSchema",
-		Type: "object",
+		Name:     "RecoveryPlanSchema",
+		Type:     "object",
 		Required: []string{"error_type", "root_cause", "confidence", "recovery_steps"},
 		Properties: map[string]SchemaProperty{
 			"error_type": {
@@ -85,7 +85,7 @@ func RecoveryPlanSchema() JSONSchema {
 				MinItems:    &minItems1,
 				MaxItems:    &maxItems10,
 				Items: &JSONSchema{
-					Type: "object",
+					Type:     "object",
 					Required: []string{"command", "reason", "risk_level"},
 					Properties: map[string]SchemaProperty{
 						"command": {
@@ -139,8 +139,8 @@ func ProjectAnalysisSchema() JSONSchema {
 	maxItems50 := 50
 
 	return JSONSchema{
-		Name: "ProjectAnalysisSchema",
-		Type: "object",
+		Name:     "ProjectAnalysisSchema",
+		Type:     "object",
 		Required: []string{"project_type", "commands"},
 		Properties: map[string]SchemaProperty{
 			"project_type": {
@@ -211,7 +211,7 @@ func ProjectAnalysisSchema() JSONSchema {
 				Description: "Setup commands",
 				MaxItems:    &maxItems50,
 				Items: &JSONSchema{
-					Type: "object",
+					Type:     "object",
 					Required: []string{"command", "working_dir", "stage"},
 					Properties: map[string]SchemaProperty{
 						"id": {
@@ -281,8 +281,8 @@ func ProjectAnalysisSchema() JSONSchema {
 // SecurityScanSchema returns the JSON schema for security scans
 func SecurityScanSchema() JSONSchema {
 	return JSONSchema{
-		Name: "SecurityScanSchema",
-		Type: "object",
+		Name:     "SecurityScanSchema",
+		Type:     "object",
 		Required: []string{"is_safe", "threats"},
 		Properties: map[string]SchemaProperty{
 			"is_safe": {
@@ -293,7 +293,7 @@ func SecurityScanSchema() JSONSchema {
 				Type:        "array",
 				Description: "Detected security threats",
 				Items: &JSONSchema{
-					Type: "object",
+					Type:     "object",
 					Required: []string{"type", "severity", "description"},
 					Properties: map[string]SchemaProperty{
 						"type": {
@@ -347,8 +347,8 @@ func CommandGenerationSchema() JSONSchema {
 	maxItems20 := 20
 
 	return JSONSchema{
-		Name: "CommandGenerationSchema",
-		Type: "object",
+		Name:     "CommandGenerationSchema",
+		Type:     "object",
 		Required: []string{"commands"},
 		Properties: map[string]SchemaProperty{
 			"commands": {
@@ -356,7 +356,7 @@ func CommandGenerationSchema() JSONSchema {
 				Description: "Generated commands",
 				MaxItems:    &maxItems20,
 				Items: &JSONSchema{
-					Type: "object",
+					Type:     "object",
 					Required: []string{"command", "description", "order"},
 					Properties: map[string]SchemaProperty{
 						"command": {
@@ -396,8 +396,8 @@ func CommandGenerationSchema() JSONSchema {
 // AutoFixSchema returns the JSON schema for auto-fix responses
 func AutoFixSchema() JSONSchema {
 	return JSONSchema{
-		Name: "AutoFixSchema",
-		Type: "object",
+		Name:     "AutoFixSchema",
+		Type:     "object",
 		Required: []string{"can_auto_fix", "explanation", "confidence"},
 		Properties: map[string]SchemaProperty{
 			"can_auto_fix": {
@@ -447,5 +447,3 @@ func GetSchemaByName(name string) (JSONSchema, error) {
 func floatPtr(f float64) *float64 {
 	return &f
 }
-
-

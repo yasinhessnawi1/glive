@@ -25,5 +25,3 @@ func getSpanIDFromContext(ctx context.Context) string {
 	}
 	return ""
 }
-
-

@@ -34,9 +34,9 @@ func NewCommandValidator() *CommandValidator {
 			"npm": true, "npx": true, "yarn": true, "pnpm": true,
 			"pip": true, "pip3": true, "pipenv": true, "poetry": true,
 			"cargo": true, "rustup": true,
-			"go": true,
+			"go":       true,
 			"composer": true,
-			"gem": true, "bundle": true,
+			"gem":      true, "bundle": true,
 			"nuget": true, "dotnet": true,
 			"mvn": true, "gradle": true,
 
@@ -49,7 +49,7 @@ func NewCommandValidator() *CommandValidator {
 			"node": true, "deno": true, "bun": true,
 			"java": true, "javac": true,
 			"ruby": true,
-			"php": true,
+			"php":  true,
 
 			// Version control
 			"git": true,
@@ -235,5 +235,3 @@ func (c *ValidatedCommand) String() string {
 func (c *ValidatedCommand) WorkingDir() string {
 	return c.workingDir
 }
-
-

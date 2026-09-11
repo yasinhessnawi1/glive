@@ -171,9 +171,9 @@ func (sv *SchemaValidator) validateProperty(value interface{}, prop SchemaProper
 		if prop.Items != nil {
 			for i, item := range arrValue {
 				if err := sv.validateProperty(item, SchemaProperty{
-					Type: prop.Items.Type,
+					Type:       prop.Items.Type,
 					Properties: prop.Items.Properties,
-					Required: prop.Items.Required,
+					Required:   prop.Items.Required,
 				}); err != nil {
 					return fmt.Errorf("array item %d: %w", i, err)
 				}
@@ -316,4 +316,3 @@ func ExtractJSONFromResponse(response string) (string, error) {
 
 	return "", fmt.Errorf("no valid JSON found in response")
 }
-

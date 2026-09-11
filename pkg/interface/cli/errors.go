@@ -112,5 +112,3 @@ func getMainMessage(err error) string {
 	}
 	return err.Error()
 }
-
-

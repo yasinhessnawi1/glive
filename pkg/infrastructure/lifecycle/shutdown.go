@@ -88,5 +88,3 @@ func (m *ShutdownManager) IsShuttingDown() bool {
 	defer m.mu.Unlock()
 	return m.closed
 }
-
-

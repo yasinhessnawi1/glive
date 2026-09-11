@@ -39,16 +39,16 @@ func (e *ProjectCloned) EventType() string {
 
 // ProjectAnalyzed event is published when a project is analyzed
 type ProjectAnalyzed struct {
-	ProjectID  *values.ProjectID
+	ProjectID   *values.ProjectID
 	ProjectType string
-	occurredAt time.Time
+	occurredAt  time.Time
 }
 
 func NewProjectAnalyzed(projectID *values.ProjectID, projectType string) *ProjectAnalyzed {
 	return &ProjectAnalyzed{
-		ProjectID:  projectID,
+		ProjectID:   projectID,
 		ProjectType: projectType,
-		occurredAt: time.Now(),
+		occurredAt:  time.Now(),
 	}
 }
 
@@ -134,4 +134,3 @@ func (e *ProjectFailed) OccurredAt() time.Time {
 func (e *ProjectFailed) EventType() string {
 	return "ProjectFailed"
 }
-

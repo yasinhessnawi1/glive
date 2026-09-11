@@ -78,9 +78,9 @@ func NewContainer(cfg *Config, logger Logger) (*Container, error) {
 		config: cfg,
 	}
 	container.executorFactory = &executorFactoryImpl{
-		defaultMode:   cfg.DefaultMode,
+		defaultMode:     cfg.DefaultMode,
 		aiClientFactory: container.aiClientFactory,
-		enableSandbox: cfg.EnableSandbox,
+		enableSandbox:   cfg.EnableSandbox,
 	}
 	container.analyzerFactory = &analyzerFactoryImpl{}
 	container.scannerFactory = &scannerFactoryImpl{}
@@ -153,22 +153,22 @@ func (f *aiClientFactoryImpl) Create() AIClient {
 }
 
 type executorFactoryImpl struct {
-	defaultMode    executor.ExecutionMode
+	defaultMode     executor.ExecutionMode
 	aiClientFactory AIClientFactory
-	enableSandbox  bool
+	enableSandbox   bool
 }
 
 func (f *executorFactoryImpl) Create(workingDir string, mode executor.ExecutionMode) Executor {
 	if mode == "" {
 		mode = f.defaultMode
 	}
-	
+
 	// Use sandboxed executor if enabled
 	if f.enableSandbox && executor.CheckSandboxAvailable() {
 		sandboxConfig := executor.DefaultSandboxConfig()
 		return executor.NewSandboxedExecutor(sandboxConfig)
 	}
-	
+
 	// Get AI client lazily when needed
 	aiClient := f.aiClientFactory.Create()
 	return executor.New(workingDir, mode, aiClient)
@@ -185,4 +185,3 @@ type scannerFactoryImpl struct{}
 func (f *scannerFactoryImpl) Create(projectPath string) Scanner {
 	return scanner.New(projectPath)
 }
-

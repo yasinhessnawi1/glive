@@ -10,7 +10,7 @@ import (
 
 // ErrorPresenter formats errors for user display
 type ErrorPresenter struct {
-	verbose bool
+	verbose  bool
 	colorize bool
 }
 
@@ -89,18 +89,18 @@ func (p *ErrorPresenter) formatDetails(err *domainerrors.GliveError) string {
 
 	sb.WriteString("\n")
 	sb.WriteString(p.color("dim", "─── Details ───\n"))
-	sb.WriteString(fmt.Sprintf("Code: %s\n", err.Code))
-	sb.WriteString(fmt.Sprintf("Category: %s\n", categoryName(err.Category)))
+	fmt.Fprintf(&sb, "Code: %s\n", err.Code)
+	fmt.Fprintf(&sb, "Category: %s\n", categoryName(err.Category))
 
 	if len(err.Context) > 0 {
 		sb.WriteString("Context:\n")
 		for k, v := range err.Context {
-			sb.WriteString(fmt.Sprintf("  %s: %s\n", k, v))
+			fmt.Fprintf(&sb, "  %s: %s\n", k, v)
 		}
 	}
 
 	if err.Cause != nil {
-		sb.WriteString(fmt.Sprintf("Cause: %v\n", err.Cause))
+		fmt.Fprintf(&sb, "Cause: %v\n", err.Cause)
 	}
 
 	if err.Retryable {
@@ -158,15 +158,15 @@ func (p *ErrorPresenter) color(colorName, text string) string {
 
 func categoryName(cat domainerrors.Category) string {
 	names := map[domainerrors.Category]string{
-		domainerrors.CategoryUser:       "User",
-		domainerrors.CategoryNetwork:    "Network",
-		domainerrors.CategorySystem:     "System",
-		domainerrors.CategorySecurity:   "Security",
-		domainerrors.CategoryAI:         "AI",
-		domainerrors.CategoryGit:        "Git",
-		domainerrors.CategoryExecution:  "Execution",
-		domainerrors.CategoryConfig:     "Config",
-		domainerrors.CategoryInternal:   "Internal",
+		domainerrors.CategoryUser:      "User",
+		domainerrors.CategoryNetwork:   "Network",
+		domainerrors.CategorySystem:    "System",
+		domainerrors.CategorySecurity:  "Security",
+		domainerrors.CategoryAI:        "AI",
+		domainerrors.CategoryGit:       "Git",
+		domainerrors.CategoryExecution: "Execution",
+		domainerrors.CategoryConfig:    "Config",
+		domainerrors.CategoryInternal:  "Internal",
 	}
 	if name, ok := names[cat]; ok {
 		return name
@@ -177,13 +177,12 @@ func categoryName(cat domainerrors.Category) string {
 func severityName(sev domainerrors.Severity) string {
 	names := map[domainerrors.Severity]string{
 		domainerrors.SeverityWarning:  "Warning",
-		domainerrors.SeverityError:     "Error",
-		domainerrors.SeverityCritical:  "Critical",
-		domainerrors.SeverityFatal:     "Fatal",
+		domainerrors.SeverityError:    "Error",
+		domainerrors.SeverityCritical: "Critical",
+		domainerrors.SeverityFatal:    "Fatal",
 	}
 	if name, ok := names[sev]; ok {
 		return name
 	}
 	return "Unknown"
 }
-

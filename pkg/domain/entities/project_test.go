@@ -195,4 +195,3 @@ func TestProject_SetLocalPath(t *testing.T) {
 		t.Errorf("expected local path /tmp/test-project, got %s", project.LocalPath().Value())
 	}
 }
-

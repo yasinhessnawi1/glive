@@ -47,4 +47,3 @@ func checkMacOSSandboxAvailable() bool {
 	}
 	return false
 }
-

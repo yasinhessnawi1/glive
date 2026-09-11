@@ -23,11 +23,11 @@ type PrometheusCounter struct {
 
 // PrometheusHistogram implements Histogram for Prometheus
 type PrometheusHistogram struct {
-	name   string
+	name    string
 	buckets []float64
-	values []float64
-	labels map[string]string
-	mu     sync.Mutex
+	values  []float64
+	labels  map[string]string
+	mu      sync.Mutex
 }
 
 // PrometheusGauge implements Gauge for Prometheus
@@ -229,7 +229,7 @@ func (p *PrometheusMetrics) Export() string {
 		histogram.mu.Lock()
 		labelStr := formatLabels(histogram.labels)
 		output += fmt.Sprintf("# TYPE %s histogram\n", name)
-		
+
 		// Calculate bucket counts
 		bucketCounts := make(map[float64]int)
 		for _, value := range histogram.values {
@@ -240,7 +240,7 @@ func (p *PrometheusMetrics) Export() string {
 			}
 			bucketCounts[+Inf]++
 		}
-		
+
 		for _, bucket := range histogram.buckets {
 			count := bucketCounts[bucket]
 			output += fmt.Sprintf("%s_bucket{le=\"%v\"}%s %d\n", name, bucket, labelStr, count)
@@ -276,7 +276,7 @@ func formatLabels(labels map[string]string) string {
 	if len(parts) == 0 {
 		return ""
 	}
-	
+
 	// Join all parts with comma
 	result := "{" + parts[0]
 	for i := 1; i < len(parts); i++ {
@@ -296,4 +296,3 @@ func sum(values []float64) float64 {
 }
 
 const Inf = 1e308
-

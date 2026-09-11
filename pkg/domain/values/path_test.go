@@ -141,5 +141,3 @@ func TestSafePath_SymlinkResolution(t *testing.T) {
 		t.Errorf("expected symlink to resolve to %q, got %q", realDir, safePath.Absolute())
 	}
 }
-
-

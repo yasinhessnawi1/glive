@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gofiber/fiber/v2"
 	"github.com/glive/interface/api"
+	"github.com/gofiber/fiber/v2"
 )
 
 // bucket represents a token bucket for rate limiting
@@ -19,11 +19,11 @@ type bucket struct {
 
 // RateLimiter implements token bucket rate limiting
 type RateLimiter struct {
-	requests   int           // max requests per window
-	window     time.Duration // time window
-	buckets    map[string]*bucket
-	mu         sync.RWMutex
-	cleanup    *time.Ticker
+	requests    int           // max requests per window
+	window      time.Duration // time window
+	buckets     map[string]*bucket
+	mu          sync.RWMutex
+	cleanup     *time.Ticker
 	stopCleanup chan bool
 }
 
@@ -138,12 +138,12 @@ func (rl *RateLimiter) allow(key string) bool {
 // Uses IP address as the key
 func (rl *RateLimiter) getKey(c *fiber.Ctx) string {
 	ip := c.IP()
-	
+
 	// For localhost, use a single key to avoid issues with different representations
 	if net.ParseIP(ip).IsLoopback() {
 		return "localhost"
 	}
-	
+
 	return ip
 }
 
@@ -230,4 +230,3 @@ func max(a, b int) int {
 	}
 	return b
 }
-

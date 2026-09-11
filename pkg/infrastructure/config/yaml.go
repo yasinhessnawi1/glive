@@ -12,5 +12,3 @@ func parseYAML(data []byte) (map[string]interface{}, error) {
 	}
 	return cfg, nil
 }
-
-

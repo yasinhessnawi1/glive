@@ -368,7 +368,7 @@ func (c *Client) readConfigFiles(projectPath string) string {
 			contentStr = contentStr[:3000] + "\n... (truncated)"
 		}
 
-		configContents.WriteString(fmt.Sprintf("\n### %s\n```\n%s\n```\n", fileName, contentStr))
+		fmt.Fprintf(&configContents, "\n### %s\n```\n%s\n```\n", fileName, contentStr)
 	}
 
 	if configContents.Len() == 0 {

@@ -9,9 +9,9 @@ const (
 	MetricCommandsExecutedTotal = "glive_commands_executed_total"
 
 	// Duration metrics (histograms)
-	MetricCloneDurationSeconds        = "glive_clone_duration_seconds"
-	MetricAnalysisDurationSeconds     = "glive_analysis_duration_seconds"
-	MetricAIRequestDurationSeconds    = "glive_ai_request_duration_seconds"
+	MetricCloneDurationSeconds     = "glive_clone_duration_seconds"
+	MetricAnalysisDurationSeconds  = "glive_analysis_duration_seconds"
+	MetricAIRequestDurationSeconds = "glive_ai_request_duration_seconds"
 
 	// Error metrics
 	MetricErrorsTotal = "glive_errors_total"
@@ -73,5 +73,3 @@ func (i *Instrumentation) RecordError(errorType string) {
 	}
 	i.metrics.Counter(MetricErrorsTotal).WithLabels(labels).Inc()
 }
-
-

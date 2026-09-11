@@ -37,4 +37,3 @@ type ProjectFilter struct {
 	Status *entities.ProjectStatus
 	Type   *entities.ProjectType
 }
-

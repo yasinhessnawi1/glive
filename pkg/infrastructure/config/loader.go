@@ -121,17 +121,17 @@ func (l *ConfigLoader) loadFile(filePath string) (map[string]interface{}, error)
 // merge merges two configuration maps, with src overriding dst
 func merge(dst, src map[string]interface{}) map[string]interface{} {
 	result := make(map[string]interface{})
-	
+
 	// Copy dst
 	for k, v := range dst {
 		result[k] = v
 	}
-	
+
 	// Override with src
 	for k, v := range src {
 		result[k] = v
 	}
-	
+
 	return result
 }
 
@@ -301,4 +301,3 @@ func findProjectConfig() string {
 
 	return ""
 }
-

@@ -95,7 +95,7 @@ func (qs *QualityScorer) completenessScore(actual, expected interface{}) float64
 	present := 0
 	total := 0
 
-	for key, _ := range expectedMap {
+	for key := range expectedMap {
 		total++
 		if _, exists := actualMap[key]; exists {
 			present++
@@ -216,5 +216,3 @@ func (qs *QualityScorer) typeCompatible(a, b interface{}) bool {
 
 	return false
 }
-
-

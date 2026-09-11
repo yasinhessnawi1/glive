@@ -71,7 +71,7 @@ func (t *Table) Render() string {
 	sb.WriteString("  ")
 	for i, header := range t.headers {
 		if i < len(colWidths) {
-			sb.WriteString(fmt.Sprintf("%-*s", colWidths[i], truncate(header, colWidths[i])))
+			fmt.Fprintf(&sb, "%-*s", colWidths[i], truncate(header, colWidths[i]))
 			if i < len(t.headers)-1 {
 				sb.WriteString("  ")
 			}
@@ -94,7 +94,7 @@ func (t *Table) Render() string {
 		sb.WriteString("  ")
 		for i, cell := range row {
 			if i < len(colWidths) {
-				sb.WriteString(fmt.Sprintf("%-*s", colWidths[i], truncate(cell, colWidths[i])))
+				fmt.Fprintf(&sb, "%-*s", colWidths[i], truncate(cell, colWidths[i]))
 				if i < len(row)-1 {
 					sb.WriteString("  ")
 				}
@@ -172,5 +172,3 @@ func FormatCommandStatusSimple(status entities.CommandStatus, description string
 
 	return fmt.Sprintf("%s %s  %s", icon, statusText, description)
 }
-
-

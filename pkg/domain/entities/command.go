@@ -65,7 +65,7 @@ func NewCommand(id, description, command string, workingDir *values.Path, stage 
 		workingDir:  workingDir,
 		stage:       stage,
 		required:    required,
-		status:       CommandPending,
+		status:      CommandPending,
 		exitCode:    -1,
 	}, nil
 }
@@ -182,4 +182,3 @@ func (c *Command) UpdateOutput(line string) {
 		c.output = fmt.Sprintf("%s\n%s", c.output, line)
 	}
 }
-

@@ -94,4 +94,3 @@ func (t *Tree) Render() string {
 	}
 	return t.Root.Render()
 }
-

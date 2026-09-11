@@ -140,4 +140,3 @@ func (l *TextLogger) log(level LogLevel, msg string, fields ...Field) {
 	line := strings.Join(parts, " ") + "\n"
 	l.writer.Write([]byte(line))
 }
-

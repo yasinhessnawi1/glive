@@ -342,4 +342,3 @@ func (s *Scanner) shouldSkipFile(path string) bool {
 
 	return false
 }
-

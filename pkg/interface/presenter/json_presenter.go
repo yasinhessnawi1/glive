@@ -31,7 +31,7 @@ func (p JSONPresenter) PresentSuccess(output *project.SetupProjectOutput) error 
 			"status":     string(output.Project.Status()),
 		},
 		"commands_count": len(output.Commands),
-		"warnings":      output.Warnings,
+		"warnings":       output.Warnings,
 	}
 
 	data, err := json.MarshalIndent(response, "", "  ")
@@ -58,4 +58,3 @@ func (p JSONPresenter) PresentError(err error) error {
 	fmt.Fprintln(p.writer, string(data))
 	return err
 }
-

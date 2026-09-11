@@ -110,5 +110,3 @@ type ErrInvalidConfig struct {
 func (e ErrInvalidConfig) Error() string {
 	return "invalid sandbox config: " + e.Field + ": " + e.Reason
 }
-
-

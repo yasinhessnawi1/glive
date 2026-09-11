@@ -14,27 +14,27 @@ import (
 
 // SandboxConfig defines sandbox configuration
 type SandboxConfig struct {
-	RootPath                string
-	EnableNetworkIsolation bool
+	RootPath                  string
+	EnableNetworkIsolation    bool
 	EnableFileSystemIsolation bool
-	AllowedPaths           []string
-	DeniedPaths            []string
-	ResourceLimits         ResourceLimits
-	Timeout                time.Duration
+	AllowedPaths              []string
+	DeniedPaths               []string
+	ResourceLimits            ResourceLimits
+	Timeout                   time.Duration
 }
 
 // ResourceLimits defines resource limits for sandboxed execution
 type ResourceLimits struct {
-	MaxCPUPercent    int
-	MaxMemoryMB      int
-	MaxDiskWriteMB   int
-	MaxProcesses     int
+	MaxCPUPercent  int
+	MaxMemoryMB    int
+	MaxDiskWriteMB int
+	MaxProcesses   int
 }
 
 // DefaultSandboxConfig returns a default sandbox configuration
 func DefaultSandboxConfig() SandboxConfig {
 	return SandboxConfig{
-		EnableNetworkIsolation: false, // Disabled by default
+		EnableNetworkIsolation:    false, // Disabled by default
 		EnableFileSystemIsolation: true,
 		ResourceLimits: ResourceLimits{
 			MaxCPUPercent:  50,
@@ -48,17 +48,17 @@ func DefaultSandboxConfig() SandboxConfig {
 
 // SandboxedExecutor provides sandboxed command execution
 type SandboxedExecutor struct {
-	config    SandboxConfig
-	validator *security.CommandValidator
-	sandbox   sandbox.Sandbox
+	config      SandboxConfig
+	validator   *security.CommandValidator
+	sandbox     sandbox.Sandbox
 	initialized bool
 }
 
 // NewSandboxedExecutor creates a new sandboxed executor
 func NewSandboxedExecutor(config SandboxConfig) *SandboxedExecutor {
 	return &SandboxedExecutor{
-		config:    config,
-		validator: security.NewCommandValidator(),
+		config:      config,
+		validator:   security.NewCommandValidator(),
 		initialized: false,
 	}
 }
@@ -93,9 +93,9 @@ func (e *SandboxedExecutor) Execute(ctx context.Context, cmd *Command, outputHan
 
 	// Convert to sandbox command format
 	sandboxCmd := sandbox.Command{
-		Command:    parts[0],
-		Args:       parts[1:],
-		WorkingDir: cmd.WorkingDir,
+		Command:     parts[0],
+		Args:        parts[1:],
+		WorkingDir:  cmd.WorkingDir,
 		Environment: make(map[string]string),
 	}
 
@@ -225,4 +225,3 @@ func (e *SandboxedExecutor) ExecuteMultiple(ctx context.Context, commands []*Com
 func CheckSandboxAvailable() bool {
 	return sandbox.CheckSandboxAvailable()
 }
-

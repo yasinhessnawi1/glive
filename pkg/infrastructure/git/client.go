@@ -19,9 +19,9 @@ var (
 
 // ConflictError represents a directory conflict that needs user resolution
 type ConflictError struct {
-	Path    string
+	Path      string
 	IsGitRepo bool
-	Message string
+	Message   string
 }
 
 func (e *ConflictError) Error() string {
@@ -232,4 +232,3 @@ func (c *Client) RenameExisting() (string, error) {
 	}
 	return backupPath, nil
 }
-

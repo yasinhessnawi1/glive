@@ -59,12 +59,12 @@ func (p *Profiler) Stop() error {
 
 // Metrics tracks runtime metrics
 type Metrics struct {
-	StartTime       time.Time
-	Allocations     uint64
-	TotalAlloc      uint64
-	HeapInUse       uint64
-	NumGC           uint32
-	GCPauseTotal    time.Duration
+	StartTime    time.Time
+	Allocations  uint64
+	TotalAlloc   uint64
+	HeapInUse    uint64
+	NumGC        uint32
+	GCPauseTotal time.Duration
 }
 
 // CaptureMetrics captures current runtime metrics
@@ -87,9 +87,8 @@ func (m *Metrics) Delta(other *Metrics) *Metrics {
 	return &Metrics{
 		Allocations:  m.Allocations - other.Allocations,
 		TotalAlloc:   m.TotalAlloc - other.TotalAlloc,
-		HeapInUse:   m.HeapInUse,
-		NumGC:       m.NumGC - other.NumGC,
+		HeapInUse:    m.HeapInUse,
+		NumGC:        m.NumGC - other.NumGC,
 		GCPauseTotal: m.GCPauseTotal - other.GCPauseTotal,
 	}
 }
-

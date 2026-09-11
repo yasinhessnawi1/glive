@@ -54,5 +54,3 @@ func ParseLevel(level string) LogLevel {
 		return LevelInfo
 	}
 }
-
-

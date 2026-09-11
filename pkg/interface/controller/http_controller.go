@@ -26,7 +26,7 @@ func NewHTTPController(cont *container.Container) *HTTPController {
 	return &HTTPController{
 		setupUseCase: setupUC,
 		presenter:    presenter.NewJSONPresenter(nil),
-		container:   cont,
+		container:    cont,
 	}
 }
 
@@ -83,4 +83,3 @@ func (c *HTTPController) SetupProject(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	c.presenter.PresentSuccess(output)
 }
-

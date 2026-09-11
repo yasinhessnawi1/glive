@@ -147,12 +147,12 @@ func WrapAI(err error, operation string) *GliveError {
 
 	if strings.Contains(errStr, "429") || strings.Contains(errStr, "rate limit") {
 		return &GliveError{
-			Code:      "AI_RATE_LIMIT",
-			Message:   "AI API rate limit exceeded",
-			Category:  CategoryAI,
-			Severity:  SeverityError,
-			Cause:     err,
-			Retryable: true,
+			Code:       "AI_RATE_LIMIT",
+			Message:    "AI API rate limit exceeded",
+			Category:   CategoryAI,
+			Severity:   SeverityError,
+			Cause:      err,
+			Retryable:  true,
 			UserAction: "Wait a few minutes and try again",
 		}
 	}
@@ -224,4 +224,3 @@ func truncateCommand(cmd string) string {
 	}
 	return cmd
 }
-

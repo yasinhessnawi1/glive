@@ -175,5 +175,3 @@ func TestSetupProject_SuspiciousRepository(t *testing.T) {
 	_ = uc
 	_ = input
 }
-
-

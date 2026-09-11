@@ -290,15 +290,15 @@ func NewConfigValidator() *ConfigValidator {
 			Max:      100,
 		}).
 		AddRule(ValidationRule{
-			Field:   "default-mode",
+			Field:    "default-mode",
 			Required: false,
-			Type:    "string",
-			OneOf:   []interface{}{"auto", "assisted", "manual"},
+			Type:     "string",
+			OneOf:    []interface{}{"auto", "assisted", "manual"},
 		}).
 		AddRule(ValidationRule{
-			Field:   "enable-sandbox",
+			Field:    "enable-sandbox",
 			Required: false,
-			Type:    "bool",
+			Type:     "bool",
 		})
 
 	return &ConfigValidator{schema: schema}
@@ -317,4 +317,3 @@ func (v *ConfigValidator) Validate(config map[string]interface{}) error {
 	}
 	return nil
 }
-

@@ -3,6 +3,7 @@ package executor
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -113,7 +114,7 @@ func (e *Executor) Execute(ctx context.Context, cmd *Command, outputHandler Outp
 	if e.mode == ModeManual {
 		if outputHandler != nil {
 			outputHandler(fmt.Sprintf("📋 Manual step: %s", cmd.Description))
-			outputHandler(fmt.Sprintf("   Run this command manually:"))
+			outputHandler("   Run this command manually:")
 			outputHandler(fmt.Sprintf("   $ %s", cmd.Command))
 			if cmd.WorkingDir != "" {
 				outputHandler(fmt.Sprintf("   (in directory: %s)", cmd.WorkingDir))
@@ -332,7 +333,8 @@ func (e *Executor) Execute(ctx context.Context, cmd *Command, outputHandler Outp
 	cmd.Error = errorBuilder.String()
 
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		exitErr := &exec.ExitError{}
+		if errors.As(err, &exitErr) {
 			cmd.ExitCode = exitErr.ExitCode()
 		}
 		cmd.Status = CommandFailed
@@ -481,7 +483,7 @@ func (e *Executor) ExecuteMultiple(ctx context.Context, commands []*Command, out
 
 		if err := e.Execute(ctx, cmd, outputHandler); err != nil {
 			// In assisted mode, if command was rejected, stop execution
-			if err == ErrCommandRejected {
+			if errors.Is(err, ErrCommandRejected) {
 				if cmd.Required {
 					return fmt.Errorf("required command rejected: execution stopped")
 				}

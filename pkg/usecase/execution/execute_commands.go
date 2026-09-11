@@ -28,11 +28,11 @@ type ExecuteCommandsOutput struct {
 
 // ExecuteCommandsUseCase handles command execution
 type ExecuteCommandsUseCase struct {
-	container   *container.Container
-	output      executor.OutputHandler
-	progressCB  ProgressCallback
-	aiClient    AIClient
-	maxAIFixes  int
+	container  *container.Container
+	output     executor.OutputHandler
+	progressCB ProgressCallback
+	aiClient   AIClient
+	maxAIFixes int
 }
 
 // ProgressCallback is called for progress updates
@@ -258,4 +258,3 @@ func (uc *ExecuteCommandsUseCase) parseAIFixCommands(fixedCmd string, originalCm
 
 	return commands
 }
-

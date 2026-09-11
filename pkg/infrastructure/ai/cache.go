@@ -4,7 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"time"
-	
+
 	"github.com/glive/infrastructure/analyzer"
 	"github.com/glive/infrastructure/cache"
 )
@@ -43,7 +43,7 @@ type comprehensiveCacheEntry struct {
 func NewAICache(capacity int, ttl time.Duration) *AICache {
 	return &AICache{
 		cache: cache.NewLRUCache(capacity, ttl),
-		ttl:    ttl,
+		ttl:   ttl,
 		hashFunc: func(input AnalysisInput) string {
 			return hashAnalysisInput(input)
 		},
@@ -109,7 +109,7 @@ func hashAnalysisInput(input AnalysisInput) string {
 	hash.Write([]byte("\n"))
 	hash.Write([]byte(input.ReadmeContent))
 	hash.Write([]byte("\n"))
-	
+
 	// Hash file list (sorted for consistency)
 	for _, file := range input.FileList {
 		hash.Write([]byte(file))
@@ -126,7 +126,7 @@ func HashWithCommitHash(repoURL string, commitHash string, fileHashes map[string
 	hash.Write([]byte("\n"))
 	hash.Write([]byte(commitHash))
 	hash.Write([]byte("\n"))
-	
+
 	// Include file hashes for change detection
 	for file, fileHash := range fileHashes {
 		hash.Write([]byte(file))
@@ -206,4 +206,3 @@ func hashProjectPath(projectPath string) string {
 	hash.Write([]byte(projectPath))
 	return hex.EncodeToString(hash.Sum(nil))
 }
-

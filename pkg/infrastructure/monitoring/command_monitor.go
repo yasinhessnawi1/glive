@@ -3,6 +3,7 @@ package monitoring
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
@@ -104,7 +105,8 @@ func (m *CommandMonitor) Start(ctx context.Context) error {
 	err = m.cmd.Wait()
 	m.endTime = time.Now()
 
-	if exitErr, ok := err.(*exec.ExitError); ok {
+	exitErr := &exec.ExitError{}
+	if errors.As(err, &exitErr) {
 		m.exitCode = exitErr.ExitCode()
 	} else if err == nil {
 		m.exitCode = 0
@@ -221,4 +223,3 @@ func (m *CommandMonitor) collectDetectedIssues() []DetectedIssue {
 
 	return issues
 }
-

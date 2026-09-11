@@ -124,10 +124,10 @@ func (v *AIResponseValidator) ValidateAnalysis(response []byte, workingDir strin
 
 	// Parse response
 	var raw struct {
-		ProjectType      string                   `json:"project_type"`
-		Commands         []map[string]interface{} `json:"commands"`
-		IsSuspicious     bool                     `json:"is_suspicious"`
-		SuspiciousReasons []string                `json:"suspicious_reasons"`
+		ProjectType       string                   `json:"project_type"`
+		Commands          []map[string]interface{} `json:"commands"`
+		IsSuspicious      bool                     `json:"is_suspicious"`
+		SuspiciousReasons []string                 `json:"suspicious_reasons"`
 	}
 
 	if err := json.Unmarshal(response, &raw); err != nil {
@@ -165,11 +165,9 @@ func (v *AIResponseValidator) ValidateAnalysis(response []byte, workingDir strin
 	}
 
 	return &ValidatedAnalysis{
-		ProjectType:      raw.ProjectType,
+		ProjectType:       raw.ProjectType,
 		Commands:          validatedCommands,
 		IsSuspicious:      raw.IsSuspicious,
 		SuspiciousReasons: raw.SuspiciousReasons,
 	}, nil
 }
-
-

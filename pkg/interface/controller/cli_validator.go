@@ -124,5 +124,3 @@ func (v AnyArg) Validate(arg string) error {
 	}
 	return nil
 }
-
-

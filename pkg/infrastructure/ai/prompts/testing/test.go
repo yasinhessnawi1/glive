@@ -31,8 +31,8 @@ type TestMetrics struct {
 	AccuracyB       float64
 	AvgTokensA      int
 	AvgTokensB      int
-	AvgLatencyA      time.Duration
-	AvgLatencyB      time.Duration
+	AvgLatencyA     time.Duration
+	AvgLatencyB     time.Duration
 	CostPerRequestA float64
 	CostPerRequestB float64
 	TotalTests      int
@@ -171,8 +171,8 @@ func (tr *TestRunner) calculateMetrics(resultsA, resultsB []TestResultItem, test
 // determineWinner determines which variant won
 func (tr *TestRunner) determineWinner(metrics TestMetrics) string {
 	// Consider accuracy, tokens, and latency
-	scoreA := metrics.AccuracyA * 0.6 - float64(metrics.AvgTokensA)/10000.0*0.2 - metrics.AvgLatencyA.Seconds()*0.2
-	scoreB := metrics.AccuracyB * 0.6 - float64(metrics.AvgTokensB)/10000.0*0.2 - metrics.AvgLatencyB.Seconds()*0.2
+	scoreA := metrics.AccuracyA*0.6 - float64(metrics.AvgTokensA)/10000.0*0.2 - metrics.AvgLatencyA.Seconds()*0.2
+	scoreB := metrics.AccuracyB*0.6 - float64(metrics.AvgTokensB)/10000.0*0.2 - metrics.AvgLatencyB.Seconds()*0.2
 
 	if scoreA > scoreB {
 		return "A"
@@ -202,5 +202,3 @@ type TestResultItem struct {
 	Latency    time.Duration
 	Tokens     int
 }
-
-

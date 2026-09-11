@@ -148,5 +148,3 @@ func ExtractVariables(templateStr string) []string {
 
 	return result
 }
-
-

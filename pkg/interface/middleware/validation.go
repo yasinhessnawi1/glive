@@ -83,7 +83,7 @@ func (m *ValidationMiddleware) Middleware(next http.Handler) http.Handler {
 			if err := validator.Validate(body); err != nil {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusBadRequest)
-				
+
 				// Format error response
 				var gliveErr *domainerrors.GliveError
 				if errors.As(err, &gliveErr) {
@@ -192,4 +192,3 @@ func (v *CreateProjectValidator) Validate(body []byte) error {
 
 	return nil
 }
-

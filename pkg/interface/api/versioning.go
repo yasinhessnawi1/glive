@@ -94,4 +94,3 @@ func IsV2(c *fiber.Ctx) bool {
 	}
 	return version.(string) == APIVersionV2
 }
-

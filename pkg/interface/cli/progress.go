@@ -128,5 +128,3 @@ func getTerminalWidth() int {
 	}
 	return 0
 }
-
-

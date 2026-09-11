@@ -27,4 +27,3 @@ func MetricsHandler(c *fiber.Ctx) error {
 	c.Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
 	return c.SendString(globalMetrics.Export())
 }
-

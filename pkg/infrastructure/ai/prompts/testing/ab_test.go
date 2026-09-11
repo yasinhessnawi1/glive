@@ -10,33 +10,33 @@ import (
 
 // ABTest represents an A/B test configuration
 type ABTest struct {
-	ID          string
-	VariantA    string // Template name/ID for variant A
-	VariantB    string // Template name/ID for variant B
-	TestCases   []TestCase
-	Confidence  float64 // Statistical confidence threshold (e.g., 0.95)
-	MinSamples  int     // Minimum samples per variant
+	ID         string
+	VariantA   string // Template name/ID for variant A
+	VariantB   string // Template name/ID for variant B
+	TestCases  []TestCase
+	Confidence float64 // Statistical confidence threshold (e.g., 0.95)
+	MinSamples int     // Minimum samples per variant
 }
 
 // ABTestResult represents the result of an A/B test
 type ABTestResult struct {
-	TestID          string
-	VariantA        string
-	VariantB        string
-	MetricsA        TestMetrics
-	MetricsB        TestMetrics
-	Winner          string
-	Confidence      float64
-	StatisticalSig  bool
-	Improvement     ABTestImprovement
+	TestID         string
+	VariantA       string
+	VariantB       string
+	MetricsA       TestMetrics
+	MetricsB       TestMetrics
+	Winner         string
+	Confidence     float64
+	StatisticalSig bool
+	Improvement    ABTestImprovement
 }
 
 // ABTestImprovement shows improvement metrics
 type ABTestImprovement struct {
-	AccuracyDelta   float64
-	TokenReduction  float64
-	LatencyDelta    float64
-	CostReduction   float64
+	AccuracyDelta  float64
+	TokenReduction float64
+	LatencyDelta   float64
+	CostReduction  float64
 }
 
 // RunABTest runs an A/B test
@@ -62,8 +62,8 @@ func RunABTest(ctx context.Context, test *ABTest, runner *TestRunner, templateA,
 	improvement := ABTestImprovement{
 		AccuracyDelta:  result.Metrics.AccuracyB - result.Metrics.AccuracyA,
 		TokenReduction: float64(result.Metrics.AvgTokensA-result.Metrics.AvgTokensB) / float64(result.Metrics.AvgTokensA) * 100,
-		LatencyDelta:    result.Metrics.AvgLatencyB.Seconds() - result.Metrics.AvgLatencyA.Seconds(),
-		CostReduction:   (result.Metrics.CostPerRequestA - result.Metrics.CostPerRequestB) / result.Metrics.CostPerRequestA * 100,
+		LatencyDelta:   result.Metrics.AvgLatencyB.Seconds() - result.Metrics.AvgLatencyA.Seconds(),
+		CostReduction:  (result.Metrics.CostPerRequestA - result.Metrics.CostPerRequestB) / result.Metrics.CostPerRequestA * 100,
 	}
 
 	return &ABTestResult{
@@ -75,7 +75,7 @@ func RunABTest(ctx context.Context, test *ABTest, runner *TestRunner, templateA,
 		Winner:         result.Winner,
 		Confidence:     test.Confidence,
 		StatisticalSig: significant,
-		Improvement:     improvement,
+		Improvement:    improvement,
 	}, nil
 }
 
@@ -109,9 +109,10 @@ func RecommendVariant(result *ABTestResult) string {
 		return "insufficient_data"
 	}
 
-	if result.Winner == "A" {
+	switch result.Winner {
+	case "A":
 		return result.VariantA
-	} else if result.Winner == "B" {
+	case "B":
 		return result.VariantB
 	}
 
@@ -122,4 +123,3 @@ func RecommendVariant(result *ABTestResult) string {
 
 	return result.VariantA // Default to A
 }
-

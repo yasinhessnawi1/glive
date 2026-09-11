@@ -85,5 +85,3 @@ func (n *NoOpAuditor) Log(event AuditEvent) error {
 func (n *NoOpAuditor) LogEvent(eventType, resource, action, result string, metadata map[string]interface{}) error {
 	return nil
 }
-
-

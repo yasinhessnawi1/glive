@@ -157,4 +157,3 @@ func NewExecutionCompletedMessage(projectID, status, message string) *WSMessage 
 		Message:   message,
 	})
 }
-

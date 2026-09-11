@@ -75,5 +75,3 @@ func AssertFalse(t *testing.T, condition bool, message string) {
 		t.Fatal(message)
 	}
 }
-
-

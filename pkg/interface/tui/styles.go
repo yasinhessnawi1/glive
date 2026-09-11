@@ -15,54 +15,54 @@ const (
 
 var (
 	// Brand Colors (Dark Mode)
-	colorPrimary   = lipgloss.Color("#60A5FA")  // Blue
-	colorSuccess   = lipgloss.Color("#34D399")  // Green
-	colorWarning   = lipgloss.Color("#FBBF24")  // Yellow
-	colorError     = lipgloss.Color("#F87171")  // Red
-	colorRecovery  = lipgloss.Color("#A78BFA")  // Purple (AI)
-	colorInfo      = lipgloss.Color("#60A5FA")  // Blue
+	colorPrimary  = lipgloss.Color("#60A5FA") // Blue
+	colorSuccess  = lipgloss.Color("#34D399") // Green
+	colorWarning  = lipgloss.Color("#FBBF24") // Yellow
+	colorError    = lipgloss.Color("#F87171") // Red
+	colorRecovery = lipgloss.Color("#A78BFA") // Purple (AI)
+	colorInfo     = lipgloss.Color("#60A5FA") // Blue
 
 	// UI Colors (Dark Mode)
-	colorBg        = lipgloss.Color("#1E293B")  // Dark bg
-	colorBgAlt     = lipgloss.Color("#0F172A")  // Darker bg
-	colorFg        = lipgloss.Color("#E2E8F0")  // Text
-	colorFgDim     = lipgloss.Color("#94A3B8")  // Dimmed text
-	colorBorder    = lipgloss.Color("#475569")  // Borders
+	colorBg     = lipgloss.Color("#1E293B") // Dark bg
+	colorBgAlt  = lipgloss.Color("#0F172A") // Darker bg
+	colorFg     = lipgloss.Color("#E2E8F0") // Text
+	colorFgDim  = lipgloss.Color("#94A3B8") // Dimmed text
+	colorBorder = lipgloss.Color("#475569") // Borders
 
 	// Syntax Highlighting
-	colorKeyword   = lipgloss.Color("#C792EA")
-	colorString    = lipgloss.Color("#C3E88D")
-	colorNumber    = lipgloss.Color("#F78C6C")
-	colorComment   = lipgloss.Color("#697098")
+	colorKeyword = lipgloss.Color("#C792EA")
+	colorString  = lipgloss.Color("#C3E88D")
+	colorNumber  = lipgloss.Color("#F78C6C")
+	colorComment = lipgloss.Color("#697098")
 )
 
 // Styles contains all UI styles
 type Styles struct {
 	// Base styles
-	Title      lipgloss.Style
-	Subtitle   lipgloss.Style
-	Box        lipgloss.Style
-	BoxAlt     lipgloss.Style
-	Border     lipgloss.Style
+	Title    lipgloss.Style
+	Subtitle lipgloss.Style
+	Box      lipgloss.Style
+	BoxAlt   lipgloss.Style
+	Border   lipgloss.Style
 
 	// Status styles
-	Success    lipgloss.Style
-	Warning    lipgloss.Style
-	Error      lipgloss.Style
-	Info       lipgloss.Style
-	Recovery   lipgloss.Style
+	Success  lipgloss.Style
+	Warning  lipgloss.Style
+	Error    lipgloss.Style
+	Info     lipgloss.Style
+	Recovery lipgloss.Style
 
 	// Text styles
-	Text       lipgloss.Style
-	TextDim    lipgloss.Style
-	TextBold   lipgloss.Style
+	Text     lipgloss.Style
+	TextDim  lipgloss.Style
+	TextBold lipgloss.Style
 
 	// Component styles
-	ProgressBar lipgloss.Style
-	Button      lipgloss.Style
+	ProgressBar  lipgloss.Style
+	Button       lipgloss.Style
 	ButtonActive lipgloss.Style
-	Input       lipgloss.Style
-	InputFocus  lipgloss.Style
+	Input        lipgloss.Style
+	InputFocus   lipgloss.Style
 
 	// Table styles
 	TableHeader lipgloss.Style
@@ -375,4 +375,3 @@ func (s *Styles) StatusColor(status string, text string) string {
 		return s.Text.Render(text)
 	}
 }
-

@@ -143,14 +143,14 @@ func (e *ToolExecutor) listDir(path string) *ToolResult {
 	}
 
 	var output strings.Builder
-	output.WriteString(fmt.Sprintf("Contents of %s:\n", targetDir))
+	fmt.Fprintf(&output, "Contents of %s:\n", targetDir)
 
 	for _, entry := range entries {
 		prefix := "📄 "
 		if entry.IsDir() {
 			prefix = "📂 "
 		}
-		output.WriteString(fmt.Sprintf("%s%s\n", prefix, entry.Name()))
+		fmt.Fprintf(&output, "%s%s\n", prefix, entry.Name())
 	}
 
 	return &ToolResult{
@@ -192,7 +192,7 @@ func (e *ToolExecutor) readDocs(path string) *ToolResult {
 			content, err := os.ReadFile(path)
 			if err == nil {
 				relPath, _ := filepath.Rel(targetDir, path)
-				docs.WriteString(fmt.Sprintf("--- %s ---\n", relPath))
+				fmt.Fprintf(&docs, "--- %s ---\n", relPath)
 
 				// Truncate individual doc files
 				contentStr := string(content)

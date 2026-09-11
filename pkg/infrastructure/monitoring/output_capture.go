@@ -131,5 +131,3 @@ func (oc *OutputCapture) GetContent() string {
 
 	return oc.buffer.String()
 }
-
-

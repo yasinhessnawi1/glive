@@ -16,13 +16,13 @@ import (
 
 // LogsView represents the logs view
 type LogsView struct {
-	state           *tui.AppState
-	projects        []*entities.Project
-	selectedIdx     int
+	state                 *tui.AppState
+	projects              []*entities.Project
+	selectedIdx           int
 	projectsViewportStart int // Viewport for projects list
-	selectedLogs    []LogEntry
-	scrollOffset    int
-	filter          string // "all", "error", "success"
+	selectedLogs          []LogEntry
+	scrollOffset          int
+	filter                string // "all", "error", "success"
 }
 
 // LogEntry represents a log entry
@@ -37,12 +37,12 @@ type LogEntry struct {
 // NewLogsView creates a new logs view
 func NewLogsView(state *tui.AppState) *LogsView {
 	return &LogsView{
-		state:                state,
-		selectedIdx:          0,
+		state:                 state,
+		selectedIdx:           0,
 		projectsViewportStart: 0,
-		selectedLogs:         make([]LogEntry, 0),
-		scrollOffset:         0,
-		filter:               "all",
+		selectedLogs:          make([]LogEntry, 0),
+		scrollOffset:          0,
+		filter:                "all",
 	}
 }
 
@@ -60,7 +60,7 @@ func (l *LogsView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 		l.selectedIdx = 0
 		l.scrollOffset = 0
 		return l, nil
-	
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc", "q":
@@ -358,7 +358,7 @@ func (l *LogsView) renderProjects() string {
 	}
 
 	content := strings.Join(lines, "\n")
-	
+
 	// Add scroll indicator if needed
 	if len(l.projects) > visibleHeight {
 		scrollInfo := fmt.Sprintf("\n(Showing %d-%d of %d)", start+1, end, len(l.projects))
@@ -413,7 +413,7 @@ func (l *LogsView) renderLogs() string {
 	for i := start; i < end; i++ {
 		log := l.selectedLogs[i]
 		timestamp := log.Timestamp.Format("15:04:05")
-		
+
 		// Format log type icon
 		typeIcon := "ℹ"
 		typeColor := l.state.Styles.TextDim
@@ -444,4 +444,3 @@ func (l *LogsView) renderLogs() string {
 
 // RefreshLogsMsg is a message to refresh logs
 type RefreshLogsMsg struct{}
-

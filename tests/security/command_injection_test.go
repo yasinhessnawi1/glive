@@ -124,5 +124,3 @@ func TestCommandAllowlist(t *testing.T) {
 		})
 	}
 }
-
-

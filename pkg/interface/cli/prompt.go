@@ -93,5 +93,3 @@ func Input(message string, defaultValue string) string {
 
 	return response
 }
-
-

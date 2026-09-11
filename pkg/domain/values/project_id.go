@@ -42,4 +42,3 @@ func (id *ProjectID) Equals(other *ProjectID) bool {
 	}
 	return id.value == other.value
 }
-

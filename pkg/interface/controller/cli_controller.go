@@ -62,4 +62,3 @@ func (c *CLIController) RunProjectWithAIOptions(ctx context.Context, githubURL s
 
 	return c.presenter.PresentSuccess(output)
 }
-

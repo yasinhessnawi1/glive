@@ -18,7 +18,7 @@ type Path struct {
 var (
 	// Dangerous path components
 	dangerousNames = map[string]bool{
-		"..": true,
+		"..":  true,
 		"con": true, "prn": true, "aux": true, "nul": true, // Windows reserved
 		"com1": true, "com2": true, "com3": true, "com4": true,
 		"lpt1": true, "lpt2": true, "lpt3": true, "lpt4": true,

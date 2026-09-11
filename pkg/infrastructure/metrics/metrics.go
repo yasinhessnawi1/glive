@@ -51,24 +51,22 @@ func (n *NoOpMetrics) Gauge(name string) Gauge {
 // NoOpCounter is a no-op counter implementation
 type NoOpCounter struct{}
 
-func (n *NoOpCounter) Inc()                                    {}
-func (n *NoOpCounter) Add(delta float64)                      {}
+func (n *NoOpCounter) Inc()                                        {}
+func (n *NoOpCounter) Add(delta float64)                           {}
 func (n *NoOpCounter) WithLabels(labels map[string]string) Counter { return n }
 
 // NoOpHistogram is a no-op histogram implementation
 type NoOpHistogram struct{}
 
-func (n *NoOpHistogram) Observe(value float64)                      {}
+func (n *NoOpHistogram) Observe(value float64)                         {}
 func (n *NoOpHistogram) WithLabels(labels map[string]string) Histogram { return n }
 
 // NoOpGauge is a no-op gauge implementation
 type NoOpGauge struct{}
 
-func (n *NoOpGauge) Set(value float64)                      {}
-func (n *NoOpGauge) Inc()                                   {}
-func (n *NoOpGauge) Dec()                                   {}
-func (n *NoOpGauge) Add(delta float64)                      {}
-func (n *NoOpGauge) Sub(delta float64)                      {}
+func (n *NoOpGauge) Set(value float64)                         {}
+func (n *NoOpGauge) Inc()                                      {}
+func (n *NoOpGauge) Dec()                                      {}
+func (n *NoOpGauge) Add(delta float64)                         {}
+func (n *NoOpGauge) Sub(delta float64)                         {}
 func (n *NoOpGauge) WithLabels(labels map[string]string) Gauge { return n }
-
-

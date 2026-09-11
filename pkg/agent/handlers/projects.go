@@ -44,9 +44,10 @@ func (h *Handler) CreateProject(c *fiber.Ctx) error {
 
 	// Determine execution mode
 	mode := core.ModeAuto
-	if req.Mode == "manual" {
+	switch req.Mode {
+	case "manual":
 		mode = core.ModeManual
-	} else if req.Mode == "assisted" {
+	case "assisted":
 		mode = core.ModeAssisted
 	}
 
@@ -409,18 +410,18 @@ type ExecutionStep struct {
 
 // ExecutionReport represents a full execution report
 type ExecutionReport struct {
-	ProjectID    string          `json:"project_id"`
-	ProjectName  string          `json:"project_name"`
-	GitHubURL    string          `json:"github_url"`
-	LocalPath    string          `json:"local_path"`
-	ProjectType  string          `json:"project_type"`
-	Status       string          `json:"status"`
-	CreatedAt    time.Time       `json:"created_at"`
-	CompletedAt  time.Time       `json:"completed_at,omitempty"`
-	TotalDuration string         `json:"total_duration,omitempty"`
-	Steps        []ExecutionStep `json:"steps"`
-	Summary      string          `json:"summary"`
-	NextSteps    []string        `json:"next_steps"`
+	ProjectID     string          `json:"project_id"`
+	ProjectName   string          `json:"project_name"`
+	GitHubURL     string          `json:"github_url"`
+	LocalPath     string          `json:"local_path"`
+	ProjectType   string          `json:"project_type"`
+	Status        string          `json:"status"`
+	CreatedAt     time.Time       `json:"created_at"`
+	CompletedAt   time.Time       `json:"completed_at,omitempty"`
+	TotalDuration string          `json:"total_duration,omitempty"`
+	Steps         []ExecutionStep `json:"steps"`
+	Summary       string          `json:"summary"`
+	NextSteps     []string        `json:"next_steps"`
 }
 
 // GetExecutionReport generates a detailed execution report for a project
@@ -441,15 +442,15 @@ func (h *Handler) GetExecutionReport(c *fiber.Ctx) error {
 
 	// Only include meaningful stages (not "log", "running", etc.)
 	meaningfulStages := map[string]bool{
-		"parsing":           true,
-		"cloning":           true,
-		"scanning":          true,
-		"analyzing":         true,
-		"ai_analysis":       true,
-		"installing":        true,
-		"executing":         true,
-		"command_started":   true,
-		"command_complete":  true,
+		"parsing":             true,
+		"cloning":             true,
+		"scanning":            true,
+		"analyzing":           true,
+		"ai_analysis":         true,
+		"installing":          true,
+		"executing":           true,
+		"command_started":     true,
+		"command_complete":    true,
 		"execution_completed": true,
 	}
 
@@ -506,11 +507,12 @@ func (h *Handler) GetExecutionReport(c *fiber.Ctx) error {
 	switch project.Status {
 	case core.StatusReady:
 		nextSteps = append(nextSteps, fmt.Sprintf("Navigate to project directory: cd %s", project.LocalPath))
-		if project.Type == "nodejs" {
+		switch project.Type {
+		case "nodejs":
 			nextSteps = append(nextSteps, "Run the project: npm start or npm run dev")
-		} else if project.Type == "python" {
+		case "python":
 			nextSteps = append(nextSteps, "Run the project: python main.py or python app.py")
-		} else if project.Type == "go" {
+		case "go":
 			nextSteps = append(nextSteps, "Run the project: go run . or go run main.go")
 		}
 		nextSteps = append(nextSteps, "Open in VS Code: code .")
@@ -549,17 +551,17 @@ func (h *Handler) GetExecutionReport(c *fiber.Ctx) error {
 func generateMarkdownReport(report ExecutionReport) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("# GLive Execution Report: %s\n\n", report.ProjectName))
-	sb.WriteString(fmt.Sprintf("**Generated:** %s\n\n", time.Now().Format(time.RFC1123)))
+	fmt.Fprintf(&sb, "# GLive Execution Report: %s\n\n", report.ProjectName)
+	fmt.Fprintf(&sb, "**Generated:** %s\n\n", time.Now().Format(time.RFC1123))
 
 	sb.WriteString("## Project Information\n\n")
-	sb.WriteString(fmt.Sprintf("- **Project ID:** %s\n", report.ProjectID))
-	sb.WriteString(fmt.Sprintf("- **GitHub URL:** %s\n", report.GitHubURL))
-	sb.WriteString(fmt.Sprintf("- **Local Path:** `%s`\n", report.LocalPath))
-	sb.WriteString(fmt.Sprintf("- **Project Type:** %s\n", report.ProjectType))
-	sb.WriteString(fmt.Sprintf("- **Status:** %s\n", report.Status))
+	fmt.Fprintf(&sb, "- **Project ID:** %s\n", report.ProjectID)
+	fmt.Fprintf(&sb, "- **GitHub URL:** %s\n", report.GitHubURL)
+	fmt.Fprintf(&sb, "- **Local Path:** `%s`\n", report.LocalPath)
+	fmt.Fprintf(&sb, "- **Project Type:** %s\n", report.ProjectType)
+	fmt.Fprintf(&sb, "- **Status:** %s\n", report.Status)
 	if report.TotalDuration != "" {
-		sb.WriteString(fmt.Sprintf("- **Total Duration:** %s\n", report.TotalDuration))
+		fmt.Fprintf(&sb, "- **Total Duration:** %s\n", report.TotalDuration)
 	}
 	sb.WriteString("\n")
 
@@ -569,17 +571,17 @@ func generateMarkdownReport(report ExecutionReport) string {
 	if len(report.Steps) > 0 {
 		sb.WriteString("## Execution Steps\n\n")
 		for _, step := range report.Steps {
-			sb.WriteString(fmt.Sprintf("### Step %d: %s\n\n", step.Step, step.Stage))
-			sb.WriteString(fmt.Sprintf("- **Description:** %s\n", step.Description))
+			fmt.Fprintf(&sb, "### Step %d: %s\n\n", step.Step, step.Stage)
+			fmt.Fprintf(&sb, "- **Description:** %s\n", step.Description)
 			if step.Command != "" {
-				sb.WriteString(fmt.Sprintf("- **Command:** `%s`\n", step.Command))
+				fmt.Fprintf(&sb, "- **Command:** `%s`\n", step.Command)
 			}
 			if step.Duration != "" {
-				sb.WriteString(fmt.Sprintf("- **Duration:** %s\n", step.Duration))
+				fmt.Fprintf(&sb, "- **Duration:** %s\n", step.Duration)
 			}
-			sb.WriteString(fmt.Sprintf("- **Status:** %s\n", map[bool]string{true: "✓ Success", false: "✗ Failed"}[step.Success]))
+			fmt.Fprintf(&sb, "- **Status:** %s\n", map[bool]string{true: "✓ Success", false: "✗ Failed"}[step.Success])
 			if step.Output != "" {
-				sb.WriteString(fmt.Sprintf("\n```\n%s\n```\n", step.Output))
+				fmt.Fprintf(&sb, "\n```\n%s\n```\n", step.Output)
 			}
 			sb.WriteString("\n")
 		}
@@ -589,14 +591,14 @@ func generateMarkdownReport(report ExecutionReport) string {
 		sb.WriteString("## Next Steps\n\n")
 		sb.WriteString("To run this project on your machine:\n\n")
 		for i, step := range report.NextSteps {
-			sb.WriteString(fmt.Sprintf("%d. %s\n", i+1, step))
+			fmt.Fprintf(&sb, "%d. %s\n", i+1, step)
 		}
 		sb.WriteString("\n")
 	}
 
 	sb.WriteString("## How to Reproduce\n\n")
 	sb.WriteString("To achieve the same setup manually, follow these exact steps that GLive executed:\n\n")
-	sb.WriteString(fmt.Sprintf("1. Clone the repository:\n   ```bash\n   git clone %s\n   cd %s\n   ```\n\n", report.GitHubURL, report.ProjectName))
+	fmt.Fprintf(&sb, "1. Clone the repository:\n   ```bash\n   git clone %s\n   cd %s\n   ```\n\n", report.GitHubURL, report.ProjectName)
 
 	// Extract actual commands from execution steps
 	commandSteps := []string{}
@@ -634,9 +636,9 @@ func generateMarkdownReport(report ExecutionReport) string {
 
 	// Add AI assumptions and analysis if available
 	sb.WriteString("### AI Analysis & Assumptions\n\n")
-	sb.WriteString(fmt.Sprintf("- **Detected Project Type:** %s\n", report.ProjectType))
+	fmt.Fprintf(&sb, "- **Detected Project Type:** %s\n", report.ProjectType)
 	if report.Summary != "" {
-		sb.WriteString(fmt.Sprintf("- **Analysis:** %s\n", report.Summary))
+		fmt.Fprintf(&sb, "- **Analysis:** %s\n", report.Summary)
 	}
 	sb.WriteString("\n*Note: GLive analyzed the project structure and dependencies to determine the optimal setup approach.*\n\n")
 

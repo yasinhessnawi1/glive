@@ -36,9 +36,9 @@ type DashboardStats struct {
 // NewDashboardView creates a new dashboard view
 func NewDashboardView(state *tui.AppState) *DashboardView {
 	return &DashboardView{
-		state:        state,
-		projects:     make([]*entities.Project, 0),
-		selectedIdx:  0,
+		state:       state,
+		projects:    make([]*entities.Project, 0),
+		selectedIdx: 0,
 	}
 }
 
@@ -58,7 +58,7 @@ func (d *DashboardView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 		d.viewportStart = 0
 		d.selectedIdx = 0
 		return d, nil
-	
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "n", "N":
@@ -87,12 +87,12 @@ func (d *DashboardView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 				sort.Slice(sortedProjects, func(i, j int) bool {
 					return sortedProjects[i].UpdatedAt().After(sortedProjects[j].UpdatedAt())
 				})
-				
+
 				maxProjects := 5
 				if len(sortedProjects) > maxProjects {
 					sortedProjects = sortedProjects[:maxProjects]
 				}
-				
+
 				if d.selectedIdx < len(sortedProjects) {
 					selectedProject := sortedProjects[d.selectedIdx]
 					// Set the project URL in state and switch to execution view
@@ -162,7 +162,7 @@ func (d *DashboardView) View() string {
 	actionsBox := d.renderQuickActions()
 	sections = append(sections, actionsBox)
 
-		// Footer with help
+	// Footer with help
 	helpText := "Use arrow keys to navigate • Press ? for help • [N] New Project • [L] Logs • [S] Settings • [R] Refresh • [X] Stop Last • [Q] Quit"
 	footer := tui.RenderFooter(d.state, helpText)
 	sections = append(sections, footer)
@@ -301,7 +301,7 @@ func (d *DashboardView) renderProjects() string {
 	}
 
 	content := strings.Join(lines, "\n")
-	
+
 	// Add scroll indicator if needed
 	if len(sortedProjects) > visibleHeight {
 		scrollInfo := fmt.Sprintf("\n(Showing %d-%d of %d projects)", start+1, end, len(sortedProjects))
@@ -314,19 +314,19 @@ func (d *DashboardView) renderProjects() string {
 // renderSystemHealth renders system health indicators
 func (d *DashboardView) renderSystemHealth() string {
 	config := d.state.Container.Config()
-	
+
 	// API Status
 	apiStatus := "● Disconnected"
 	if config.APIKey != "" {
 		apiStatus = "● Connected"
 	}
-	
+
 	// Sandbox Status
 	sandboxStatus := "● Disabled"
 	if config.EnableSandbox {
 		sandboxStatus = "● Enabled"
 	}
-	
+
 	// AI Provider Status
 	aiStatus := "● None"
 	if config.APIProvider != "" {
@@ -334,7 +334,7 @@ func (d *DashboardView) renderSystemHealth() string {
 	} else if config.APIKey != "" {
 		aiStatus = "● Unknown"
 	}
-	
+
 	// Workspace Status
 	workspaceStatus := "● Ready"
 	if config.WorkspaceDir == "" {
@@ -493,9 +493,9 @@ func (d *DashboardView) stopLastActiveProject() tea.Cmd {
 		}
 
 		return StopProjectMsg{
-			Success:     true,
-			Message:     fmt.Sprintf("Stopped project: %s", projectName),
-			ProjectID:   lastActiveProject.ID().Value(),
+			Success:   true,
+			Message:   fmt.Sprintf("Stopped project: %s", projectName),
+			ProjectID: lastActiveProject.ID().Value(),
 		}
 	}
 }
@@ -543,4 +543,3 @@ func formatTimeAgo(t time.Time) string {
 	}
 	return t.Format("Jan 2")
 }
-

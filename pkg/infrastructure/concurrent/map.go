@@ -77,5 +77,3 @@ func (m *SafeMap[K, V]) Range(f func(key K, value V) bool) {
 		}
 	}
 }
-
-

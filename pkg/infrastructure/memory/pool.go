@@ -83,4 +83,3 @@ func (r *StreamingReader) ProcessLines(ctx context.Context, processor func(line 
 
 	return scanner.Err()
 }
-

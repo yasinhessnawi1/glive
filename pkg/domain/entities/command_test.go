@@ -69,4 +69,3 @@ func TestCommand_Required(t *testing.T) {
 		t.Error("command should not be required")
 	}
 }
-

@@ -36,17 +36,17 @@ const (
 
 // ExecutionContext holds context for command execution
 type ExecutionContext struct {
-	CurrentCommand *executor.Command
-	LastOutput     string
-	WorkingDir     string
-	AIFixAttempts  int
+	CurrentCommand   *executor.Command
+	LastOutput       string
+	WorkingDir       string
+	AIFixAttempts    int
 	RecoveryAttempts int
 }
 
 // CompositeRecovery tries multiple strategies
 type CompositeRecovery struct {
-	strategies []RecoveryStrategy
-	logger     Logger
+	strategies  []RecoveryStrategy
+	logger      Logger
 	maxAttempts int
 }
 
@@ -200,4 +200,3 @@ func extractToolName(command string) string {
 	}
 	return command
 }
-

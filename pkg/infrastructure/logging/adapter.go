@@ -55,4 +55,3 @@ func (a *Adapter) WithFields(fields ...Field) *Adapter {
 func (a *Adapter) WithContext(ctx context.Context) *Adapter {
 	return &Adapter{logger: a.logger.WithContext(ctx)}
 }
-

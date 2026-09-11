@@ -145,4 +145,3 @@ func (s *Span) String() string {
 	return fmt.Sprintf("Span{name=%s, traceID=%s, spanID=%s, duration=%v, status=%s}",
 		s.Name, s.TraceID, s.SpanID, s.Duration(), s.Status)
 }
-

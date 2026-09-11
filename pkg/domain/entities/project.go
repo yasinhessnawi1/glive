@@ -160,7 +160,7 @@ func (p *Project) canTransitionTo(newStatus ProjectStatus) bool {
 		StatusAnalyzing:  {StatusInstalling, StatusFailed, StatusStopped},
 		StatusInstalling: {StatusReady, StatusFailed, StatusStopped},
 		StatusRunning:    {StatusReady, StatusStopped, StatusFailed},
-		StatusReady:      {StatusRunning, StatusStopped, StatusCloning, StatusAnalyzing}, // Allow re-setup
+		StatusReady:      {StatusRunning, StatusStopped, StatusCloning, StatusAnalyzing},    // Allow re-setup
 		StatusFailed:     {StatusPending, StatusCloning, StatusAnalyzing, StatusInstalling}, // Can retry from any step
 		StatusStopped:    {StatusRunning, StatusPending, StatusCloning},
 	}
@@ -212,4 +212,3 @@ func (p *Project) SetStatusUnsafe(status ProjectStatus) {
 	p.status = status
 	// Don't update updatedAt here - it should be restored from persistence
 }
-

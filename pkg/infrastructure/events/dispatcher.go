@@ -70,4 +70,3 @@ func (d *Dispatcher) Unsubscribe(eventType string, handler events.EventHandler) 
 		}
 	}
 }
-

@@ -44,5 +44,3 @@ func (s Severity) String() string {
 		return "unknown"
 	}
 }
-
-

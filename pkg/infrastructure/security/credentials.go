@@ -300,4 +300,3 @@ func sanitizeKey(key string) string {
 	key = strings.ReplaceAll(key, "|", "_")
 	return base64.URLEncoding.EncodeToString([]byte(key))
 }
-

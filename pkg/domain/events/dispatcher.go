@@ -25,4 +25,3 @@ type EventDispatcher interface {
 	// Unsubscribe removes a handler for a specific event type
 	Unsubscribe(eventType string, handler EventHandler)
 }
-

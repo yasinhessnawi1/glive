@@ -26,27 +26,27 @@ type PromptConstraints struct {
 
 // PromptTemplate represents a prompt template loaded from YAML or text file
 type PromptTemplate struct {
-	ID            string            `yaml:"id"`
-	Name          string            `yaml:"name"`
-	Version       string            `yaml:"version"`
-	Category      string            `yaml:"category"`      // "analysis", "recovery", "security", "system"
-	Template      string            `yaml:"template"`
-	Variables     []string          `yaml:"variables"`
-	Parent        string            `yaml:"parent"`         // Inherit from base template
-	SystemPrompt  string            `yaml:"system_prompt"` // Optional system prompt
-	Constraints   PromptConstraints `yaml:"constraints"`
-	FilePath      string            // Path to source file
-	LastModified  time.Time         // Last modification time
+	ID           string            `yaml:"id"`
+	Name         string            `yaml:"name"`
+	Version      string            `yaml:"version"`
+	Category     string            `yaml:"category"` // "analysis", "recovery", "security", "system"
+	Template     string            `yaml:"template"`
+	Variables    []string          `yaml:"variables"`
+	Parent       string            `yaml:"parent"`        // Inherit from base template
+	SystemPrompt string            `yaml:"system_prompt"` // Optional system prompt
+	Constraints  PromptConstraints `yaml:"constraints"`
+	FilePath     string            // Path to source file
+	LastModified time.Time         // Last modification time
 }
 
 // PromptManager manages prompt templates with versioning and hot reload
 type PromptManager struct {
-	templates     map[string]*PromptTemplate // key: "name:version" or "name" (latest)
-	versions      map[string][]string        // key: name, value: list of versions
-	basePath      string
-	mu            sync.RWMutex
-	hotReload     bool
-	watchers      map[string]time.Time // file path -> last check time
+	templates map[string]*PromptTemplate // key: "name:version" or "name" (latest)
+	versions  map[string][]string        // key: name, value: list of versions
+	basePath  string
+	mu        sync.RWMutex
+	hotReload bool
+	watchers  map[string]time.Time // file path -> last check time
 }
 
 // NewPromptManager creates a new prompt manager
@@ -213,7 +213,7 @@ func (pm *PromptManager) loadTemplate(filePath string) (*PromptTemplate, error) 
 		name := strings.TrimSuffix(basename, filepath.Ext(basename))
 		// Remove version suffix if present
 		name = regexp.MustCompile(`_v\d+$`).ReplaceAllString(name, "")
-		
+
 		tmpl.Name = name
 		tmpl.Template = string(data)
 		tmpl.Constraints.MaxTokens = 4000 // Default
@@ -299,10 +299,10 @@ func (pm *PromptManager) resolveTemplate(tmpl *PromptTemplate) (*PromptTemplate,
 	// Merge: parent template + child template
 	merged := *tmpl
 	merged.Template = resolvedParent.Template + "\n\n" + tmpl.Template
-	
+
 	// Merge variables
 	merged.Variables = append(resolvedParent.Variables, tmpl.Variables...)
-	
+
 	// Merge constraints (child overrides parent)
 	if merged.Constraints.MaxTokens == 0 {
 		merged.Constraints.MaxTokens = resolvedParent.Constraints.MaxTokens
@@ -368,13 +368,12 @@ func (pm *PromptManager) RegisterTemplate(tmpl *PromptTemplate) {
 func (pm *PromptManager) Reload() error {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
-	
+
 	// Clear existing templates
 	pm.templates = make(map[string]*PromptTemplate)
 	pm.versions = make(map[string][]string)
 	pm.watchers = make(map[string]time.Time)
-	
+
 	// Reload
 	return pm.loadTemplates()
 }
-

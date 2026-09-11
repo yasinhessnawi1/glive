@@ -48,7 +48,7 @@ func (v *ConfigValidator) Validate(cfg *types.Config) error {
 	}
 
 	if len(errs) > 0 {
-		return fmt.Errorf("%w: %v", ErrValidationFailed, errors.Join(errs...))
+		return fmt.Errorf("%w: %w", ErrValidationFailed, errors.Join(errs...))
 	}
 
 	return nil
@@ -147,4 +147,3 @@ func validateMaxConcurrent(cfg *types.Config) error {
 
 	return nil
 }
-

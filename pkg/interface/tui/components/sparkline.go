@@ -161,7 +161,7 @@ func (s *Sparkline) sampleData() []float64 {
 // AddDataPoint adds a new data point and removes the oldest if needed
 func (s *Sparkline) AddDataPoint(value float64) {
 	s.Data = append(s.Data, value)
-	
+
 	// Keep only last N points (where N is roughly 2x width for smoothness)
 	maxPoints := s.Width * 2
 	if len(s.Data) > maxPoints {
@@ -174,10 +174,9 @@ func (s *Sparkline) AddDataPoint(value float64) {
 // RenderWithLabel renders sparkline with a label and value
 func (s *Sparkline) RenderWithLabel(label string, currentValue float64, unit string) string {
 	sparkline := s.Render()
-	
+
 	if unit == "" {
 		return fmt.Sprintf("%s: %s  %.1f", label, sparkline, currentValue)
 	}
 	return fmt.Sprintf("%s: %s  %.1f %s", label, sparkline, currentValue, unit)
 }
-

@@ -154,4 +154,3 @@ func (c *AnalysisCache) SetAnalysis(repoURL string, commitHash string, result *t
 	key := repoURL + "@" + commitHash
 	c.cache.Set(key, result)
 }
-

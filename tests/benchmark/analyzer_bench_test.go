@@ -91,5 +91,3 @@ func BenchmarkCommandParsing(b *testing.B) {
 		})
 	}
 }
-
-

@@ -228,7 +228,7 @@ func (h *HelpView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 		h.viewportStart = 0
 		h.selectedSection = 0
 		return h, nil
-	
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc", "q", "?":

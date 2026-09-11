@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"github.com/gofiber/fiber/v2"
 	"github.com/glive/interface/api"
+	"github.com/gofiber/fiber/v2"
 )
 
 // GetConfig returns the current configuration

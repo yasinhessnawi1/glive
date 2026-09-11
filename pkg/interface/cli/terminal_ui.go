@@ -20,7 +20,7 @@ type TerminalUI struct {
 	lastLine         string
 	stopSpinner      chan struct{}
 	spinnerDone      chan struct{}
-	lastProgress     int      // Last progress percentage shown
+	lastProgress     int       // Last progress percentage shown
 	lastProgressTime time.Time // Last time progress was updated
 }
 
@@ -154,11 +154,11 @@ func (ui *TerminalUI) ShowProgress(current, total int, label string) {
 			percentChange = oldPercent - newPercent
 		}
 	}
-	
+
 	timeSinceLastUpdate := now.Sub(ui.lastProgressTime)
 	isFirstUpdate := ui.progressBar == nil
 	shouldUpdate := isFirstUpdate || percentChange >= 5 || timeSinceLastUpdate >= 500*time.Millisecond || current >= total
-	
+
 	if !shouldUpdate {
 		// Skip this update to avoid flickering
 		return
@@ -180,11 +180,11 @@ func (ui *TerminalUI) ShowProgress(current, total int, label string) {
 	// Render progress bar
 	ui.clearLineLocked()
 	fmt.Fprint(ui.writer, ui.progressBar.Render())
-	
+
 	// Update tracking
 	ui.lastProgress = current
 	ui.lastProgressTime = now
-	
+
 	if current >= total {
 		fmt.Fprintln(ui.writer)
 		ui.progressBar = nil

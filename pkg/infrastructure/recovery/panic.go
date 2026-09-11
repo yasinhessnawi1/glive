@@ -98,4 +98,3 @@ func SafeGo(name string, logger Logger, fn func()) {
 		fn()
 	}()
 }
-

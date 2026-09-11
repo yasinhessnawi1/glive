@@ -19,7 +19,7 @@ func OptimizedClient() *http.Client {
 			}).DialContext,
 			MaxIdleConns:          100,
 			MaxIdleConnsPerHost:   10,
-			MaxConnsPerHost:        20,
+			MaxConnsPerHost:       20,
 			IdleConnTimeout:       90 * time.Second,
 			TLSHandshakeTimeout:   10 * time.Second,
 			ExpectContinueTimeout: 1 * time.Second,
@@ -63,4 +63,3 @@ func (p *ConnectionPool) GetLastAccess(host string) (time.Time, bool) {
 	t, ok := p.hosts[host]
 	return t, ok
 }
-

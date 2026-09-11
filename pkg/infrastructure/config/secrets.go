@@ -49,5 +49,3 @@ func (s *ConfigSecretStore) Delete(key string) error {
 const (
 	SecretKeyAPIKey = "api_key"
 )
-
-

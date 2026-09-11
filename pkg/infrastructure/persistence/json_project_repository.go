@@ -25,28 +25,28 @@ type JSONProjectRepository struct {
 
 // projectDTO is the data transfer object for JSON serialization
 type projectDTO struct {
-	ID            string    `json:"id"`
-	Name          string    `json:"name"`
-	GitHubURL     string    `json:"github_url"`
-	LocalPath     string    `json:"local_path"`
-	Type          string    `json:"type"`
-	Status        string    `json:"status"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
-	Analysis      *analysisDTO `json:"analysis,omitempty"`
+	ID        string       `json:"id"`
+	Name      string       `json:"name"`
+	GitHubURL string       `json:"github_url"`
+	LocalPath string       `json:"local_path"`
+	Type      string       `json:"type"`
+	Status    string       `json:"status"`
+	CreatedAt time.Time    `json:"created_at"`
+	UpdatedAt time.Time    `json:"updated_at"`
+	Analysis  *analysisDTO `json:"analysis,omitempty"`
 }
 
 type analysisDTO struct {
-	ProjectType        string   `json:"project_type"`
-	DetectedLanguages  []string `json:"detected_languages"`
-	PackageManagers    []string `json:"package_managers"`
-	EntryPoints        []string `json:"entry_points"`
+	ProjectType        string          `json:"project_type"`
+	DetectedLanguages  []string        `json:"detected_languages"`
+	PackageManagers    []string        `json:"package_managers"`
+	EntryPoints        []string        `json:"entry_points"`
 	Dependencies       []dependencyDTO `json:"dependencies"`
-	SystemRequirements []string `json:"system_requirements"`
-	IsSuspicious       bool     `json:"is_suspicious"`
-	SuspiciousReasons  []string `json:"suspicious_reasons"`
-	EstimatedSize       string  `json:"estimated_size"`
-	Description        string  `json:"description"`
+	SystemRequirements []string        `json:"system_requirements"`
+	IsSuspicious       bool            `json:"is_suspicious"`
+	SuspiciousReasons  []string        `json:"suspicious_reasons"`
+	EstimatedSize      string          `json:"estimated_size"`
+	Description        string          `json:"description"`
 }
 
 type dependencyDTO struct {
@@ -58,8 +58,8 @@ type dependencyDTO struct {
 
 // ProjectState represents the persisted state of a project
 type ProjectState struct {
-	Project    *projectDTO `json:"project"`
-	UpdatedAt  time.Time   `json:"updated_at"`
+	Project   *projectDTO `json:"project"`
+	UpdatedAt time.Time   `json:"updated_at"`
 }
 
 // NewJSONProjectRepository creates a new JSON-based project repository
@@ -356,4 +356,3 @@ func (r *JSONProjectRepository) loadProjects() error {
 func (r *JSONProjectRepository) getProjectFilePath(projectID string) string {
 	return filepath.Join(r.stateDir, projectID+".json")
 }
-

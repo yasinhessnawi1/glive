@@ -53,7 +53,7 @@ func SuccessResponse(c *fiber.Ctx, statusCode int, data interface{}) error {
 		Data:    data,
 		Meta: &APIMeta{
 			RequestID: ctx.RequestID,
-			Duration: formatDuration(duration),
+			Duration:  formatDuration(duration),
 		},
 	}
 
@@ -143,4 +143,3 @@ func formatDuration(d time.Duration) string {
 func SetResponseContext(c *fiber.Ctx, ctx *ResponseContext) {
 	c.Locals("response_context", ctx)
 }
-

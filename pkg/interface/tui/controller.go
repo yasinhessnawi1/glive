@@ -11,9 +11,9 @@ import (
 
 // TUIController bridges TUI with use cases
 type TUIController struct {
-	container   *container.Container
+	container    *container.Container
 	setupUseCase *project.SetupProjectUseCase
-	output      io.Writer
+	output       io.Writer
 }
 
 // NewTUIController creates a new TUI controller
@@ -26,9 +26,9 @@ func NewTUIController(cont *container.Container, output io.Writer) *TUIControlle
 	setupUC := project.NewSetupProjectUseCase(projectRepo, cont, output)
 
 	return &TUIController{
-		container:   cont,
+		container:    cont,
 		setupUseCase: setupUC,
-		output:      output,
+		output:       output,
 	}
 }
 
@@ -49,4 +49,3 @@ func (c *TUIController) RunProject(ctx context.Context, githubURL string, mode e
 	_, err := c.setupUseCase.Execute(ctx, input)
 	return err
 }
-

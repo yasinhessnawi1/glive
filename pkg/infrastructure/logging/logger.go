@@ -103,5 +103,3 @@ func FieldsToMap(fields []Field) map[string]interface{} {
 	}
 	return result
 }
-
-

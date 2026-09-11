@@ -99,5 +99,3 @@ func TestRepoURL_CloneURL(t *testing.T) {
 		t.Errorf("expected clone URL %q, got %q", expected, cloneURL)
 	}
 }
-
-

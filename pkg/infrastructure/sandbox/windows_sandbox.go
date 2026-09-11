@@ -4,6 +4,7 @@ package sandbox
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -159,7 +160,8 @@ func (s *WindowsSandbox) Execute(ctx context.Context, cmd Command) (*Result, err
 
 	exitCode := 0
 	if execErr != nil {
-		if exitErr, ok := execErr.(*exec.ExitError); ok {
+		exitErr := &exec.ExitError{}
+		if errors.As(execErr, &exitErr) {
 			if status, ok := exitErr.Sys().(syscall.WaitStatus); ok {
 				exitCode = status.ExitStatus()
 			}
@@ -225,12 +227,12 @@ func (s *WindowsSandbox) buildCommand(ctx context.Context, cmd Command) *exec.Cm
 
 // Windows Job Object constants (not all are in golang.org/x/sys/windows)
 const (
-	JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE   = 0x00002000
-	JOB_OBJECT_LIMIT_PROCESS_MEMORY      = 0x00000100
-	JOB_OBJECT_LIMIT_JOB_MEMORY          = 0x00000200
-	JobObjectBasicLimitInformation       = 2
-	JobObjectExtendedLimitInformation    = 9
-	JobObjectBasicAccountingInformation  = 1
+	JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE  = 0x00002000
+	JOB_OBJECT_LIMIT_PROCESS_MEMORY     = 0x00000100
+	JOB_OBJECT_LIMIT_JOB_MEMORY         = 0x00000200
+	JobObjectBasicLimitInformation      = 2
+	JobObjectExtendedLimitInformation   = 9
+	JobObjectBasicAccountingInformation = 1
 )
 
 // JOBOBJECT_BASIC_LIMIT_INFORMATION for setting limits
@@ -334,7 +336,7 @@ func (s *WindowsSandbox) getJobResourceUsage() (float64, int64) {
 	if r1 != 0 {
 		// Calculate CPU usage (TotalUserTime + TotalKernelTime)
 		totalTime := basicAccInfo.TotalUserTime + basicAccInfo.TotalKernelTime
-		cpuUsage = float64(totalTime) / 10000000.0 // Convert 100-nanosecond intervals to seconds
+		cpuUsage = float64(totalTime) / 10000000.0                  // Convert 100-nanosecond intervals to seconds
 		memoryUsed = int64(basicAccInfo.TotalPageFaultCount) * 4096 // Approximate
 	}
 
@@ -397,4 +399,3 @@ func parseMemoryLimit(limitStr string) (int64, error) {
 
 	return value * multiplier, nil
 }
-

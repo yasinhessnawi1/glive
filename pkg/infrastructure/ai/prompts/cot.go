@@ -12,11 +12,11 @@ type ChainOfThoughtBuilder struct {
 
 // CoTStep represents a step in chain-of-thought reasoning
 type CoTStep struct {
-	Number      int
-	Title       string
+	Number       int
+	Title        string
 	Instructions []string
-	Question    string
-	Answer      string // For examples
+	Question     string
+	Answer       string // For examples
 }
 
 // NewChainOfThoughtBuilder creates a new CoT builder
@@ -29,10 +29,10 @@ func NewChainOfThoughtBuilder() *ChainOfThoughtBuilder {
 // AddStep adds a reasoning step
 func (cot *ChainOfThoughtBuilder) AddStep(number int, title string, instructions []string, question string) *ChainOfThoughtBuilder {
 	cot.steps = append(cot.steps, CoTStep{
-		Number:      number,
-		Title:       title,
+		Number:       number,
+		Title:        title,
 		Instructions: instructions,
-		Question:    question,
+		Question:     question,
 	})
 	return cot
 }
@@ -44,18 +44,18 @@ func (cot *ChainOfThoughtBuilder) Build(finalAnswerFormat string) string {
 	builder.WriteString("You are analyzing a problem. Think step by step:\n\n")
 
 	for _, step := range cot.steps {
-		builder.WriteString(fmt.Sprintf("Step %d: %s\n", step.Number, step.Title))
+		fmt.Fprintf(&builder, "Step %d: %s\n", step.Number, step.Title)
 		for _, instruction := range step.Instructions {
-			builder.WriteString(fmt.Sprintf("- %s\n", instruction))
+			fmt.Fprintf(&builder, "- %s\n", instruction)
 		}
 		if step.Question != "" {
-			builder.WriteString(fmt.Sprintf("%s [answer]\n", step.Question))
+			fmt.Fprintf(&builder, "%s [answer]\n", step.Question)
 		}
 		builder.WriteString("\n")
 	}
 
 	if finalAnswerFormat != "" {
-		builder.WriteString(fmt.Sprintf("Final Answer (%s):\n", finalAnswerFormat))
+		fmt.Fprintf(&builder, "Final Answer (%s):\n", finalAnswerFormat)
 	}
 
 	return builder.String()
@@ -69,19 +69,19 @@ func ErrorDiagnosisCoT() string {
 		"Scan error messages",
 		"Check stack traces",
 	}, "What type of error is this?")
-	
+
 	cot.AddStep(2, "Determine Root Cause", []string{
 		"What dependency is missing?",
 		"What configuration is wrong?",
 		"What prerequisite wasn't met?",
 	}, "Root cause:")
-	
+
 	cot.AddStep(3, "Assess Severity", []string{
 		"Can this be fixed automatically?",
 		"What's the risk level?",
 		"Will it require user intervention?",
 	}, "Severity assessment:")
-	
+
 	cot.AddStep(4, "Generate Solution", []string{
 		"What commands will fix this?",
 		"What's the order of operations?",
@@ -99,13 +99,13 @@ func ProjectAnalysisCoT() string {
 		"Look for configuration files (package.json, requirements.txt, go.mod, etc.)",
 		"Check for language-specific patterns",
 	}, "What type of project is this?")
-	
+
 	cot.AddStep(2, "Identify Dependencies", []string{
 		"List all dependencies",
 		"Check package manager files",
 		"Identify system requirements",
 	}, "What dependencies are needed?")
-	
+
 	cot.AddStep(3, "Determine Setup Steps", []string{
 		"What commands install dependencies?",
 		"What commands build the project?",
@@ -123,13 +123,13 @@ func SecurityScanCoT() string {
 		"Look for obfuscated code",
 		"Examine executable files",
 	}, "Are there any malware indicators?")
-	
+
 	cot.AddStep(2, "Check for Credentials", []string{
 		"Scan for API keys",
 		"Look for passwords",
 		"Check for tokens",
 	}, "Are credentials exposed?")
-	
+
 	cot.AddStep(3, "Audit Dependencies", []string{
 		"Check for known vulnerabilities",
 		"Review dependency versions",
@@ -147,19 +147,19 @@ func BuildRecoveryPlanCoT(errorMessage, command, output string) string {
 		"Scan error messages",
 		"Check stack traces",
 	}, fmt.Sprintf("What type of error is this?\nError: %s", errorMessage))
-	
+
 	cot.AddStep(2, "Determine Root Cause", []string{
 		"What dependency is missing?",
 		"What configuration is wrong?",
 		"What prerequisite wasn't met?",
 	}, fmt.Sprintf("Root cause:\nCommand: %s\nOutput: %s", command, output))
-	
+
 	cot.AddStep(3, "Assess Severity", []string{
 		"Can this be fixed automatically?",
 		"What's the risk level?",
 		"Will it require user intervention?",
 	}, "Severity assessment:")
-	
+
 	cot.AddStep(4, "Generate Solution", []string{
 		"What commands will fix this?",
 		"What's the order of operations?",
@@ -186,5 +186,3 @@ func BuildRecoveryPlanCoT(errorMessage, command, output string) string {
 
 	return prompt
 }
-
-

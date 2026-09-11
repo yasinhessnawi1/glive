@@ -109,10 +109,10 @@ type ProgressUpdate struct {
 	Percentage int       `json:"percentage"`
 	Timestamp  time.Time `json:"timestamp"`
 	CommandID  string    `json:"command_id,omitempty"`
-	Command    string    `json:"command,omitempty"`    // For command_started events
-	ExitCode   int       `json:"exit_code,omitempty"`  // For command_complete events
-	Success    bool      `json:"success,omitempty"`    // For command_complete events
-	Duration   int64     `json:"duration,omitempty"`   // Duration in milliseconds
+	Command    string    `json:"command,omitempty"`   // For command_started events
+	ExitCode   int       `json:"exit_code,omitempty"` // For command_complete events
+	Success    bool      `json:"success,omitempty"`   // For command_complete events
+	Duration   int64     `json:"duration,omitempty"`  // Duration in milliseconds
 }
 
 // Config represents GLive configuration

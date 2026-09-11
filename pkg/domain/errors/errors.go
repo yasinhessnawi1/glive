@@ -9,25 +9,25 @@ import (
 type Severity int
 
 const (
-	SeverityWarning Severity = iota // Recoverable, operation may continue
-	SeverityError                   // Operation failed, but system is stable
-	SeverityCritical                // System may be in unstable state
-	SeverityFatal                  // System cannot continue
+	SeverityWarning  Severity = iota // Recoverable, operation may continue
+	SeverityError                    // Operation failed, but system is stable
+	SeverityCritical                 // System may be in unstable state
+	SeverityFatal                    // System cannot continue
 )
 
 // Category helps route errors to appropriate handlers
 type Category int
 
 const (
-	CategoryUser Category = iota // User input/action error
-	CategoryNetwork              // Network-related error
-	CategorySystem               // OS/filesystem error
-	CategorySecurity             // Security violation
-	CategoryAI                   // AI service error
-	CategoryGit                  // Git operation error
-	CategoryExecution            // Command execution error
-	CategoryConfig               // Configuration error
-	CategoryInternal             // Internal bug
+	CategoryUser      Category = iota // User input/action error
+	CategoryNetwork                   // Network-related error
+	CategorySystem                    // OS/filesystem error
+	CategorySecurity                  // Security violation
+	CategoryAI                        // AI service error
+	CategoryGit                       // Git operation error
+	CategoryExecution                 // Command execution error
+	CategoryConfig                    // Configuration error
+	CategoryInternal                  // Internal bug
 )
 
 // GliveError is the base error type for all application errors
@@ -111,12 +111,12 @@ func NewUserError(code, message string) *GliveError {
 
 func NewNetworkError(code, message string, cause error) *GliveError {
 	return &GliveError{
-		Code:      code,
-		Message:   message,
-		Category:  CategoryNetwork,
-		Severity:  SeverityError,
-		Cause:     cause,
-		Retryable: true,
+		Code:       code,
+		Message:    message,
+		Category:   CategoryNetwork,
+		Severity:   SeverityError,
+		Cause:      cause,
+		Retryable:  true,
 		UserAction: "Check your internet connection and try again",
 	}
 }

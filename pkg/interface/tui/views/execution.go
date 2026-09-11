@@ -93,11 +93,11 @@ type ExecutionView struct {
 	detectedPortErr bool // Whether a port error was detected
 
 	// Preview and summary state
-	previewURL     string                 // Detected preview URL for web projects
-	previewPort    int                    // Detected preview port
-	projectType    string                 // Detected project type (nodejs, python, go, etc.)
-	suggestions    []ExecutionSuggestion  // AI suggestions for the user
-	isWebProject   bool                   // Whether this is a web project
+	previewURL   string                // Detected preview URL for web projects
+	previewPort  int                   // Detected preview port
+	projectType  string                // Detected project type (nodejs, python, go, etc.)
+	suggestions  []ExecutionSuggestion // AI suggestions for the user
+	isWebProject bool                  // Whether this is a web project
 }
 
 // ExecutionStep represents a single execution step
@@ -843,13 +843,14 @@ func (e *ExecutionView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 		if e.isSimulation && e.currentStep < len(e.steps) {
 			currentStep := &e.steps[e.currentStep]
 
-			if currentStep.Status == StepPending {
+			switch currentStep.Status {
+			case StepPending:
 				// Start this step
 				currentStep.Status = StepRunning
 				currentStep.StartTime = time.Now()
 				currentStep.Progress = 0
 				e.outputLines = append(e.outputLines, fmt.Sprintf("Starting: %s", currentStep.Name))
-			} else if currentStep.Status == StepRunning {
+			case StepRunning:
 				// Progress this step
 				currentStep.Progress += 0.2
 				if currentStep.Progress >= 1.0 {
@@ -1686,9 +1687,7 @@ func (e *ExecutionView) runProjectWithPort(port int) tea.Cmd {
 
 		// Add environment variables
 		cmd.Env = os.Environ()
-		for _, envVar := range envVars {
-			cmd.Env = append(cmd.Env, envVar)
-		}
+		cmd.Env = append(cmd.Env, envVars...)
 
 		e.runningCmd = cmd
 
@@ -2091,7 +2090,7 @@ func (e *ExecutionView) showSetupInstructions() {
 	e.outputLines = append(e.outputLines, "📝 Steps to Run Manually:")
 	e.outputLines = append(e.outputLines, "")
 
-	e.outputLines = append(e.outputLines, fmt.Sprintf("1. Navigate to project directory:"))
+	e.outputLines = append(e.outputLines, "1. Navigate to project directory:")
 	e.outputLines = append(e.outputLines, fmt.Sprintf("   cd %s", e.projectPath))
 	e.outputLines = append(e.outputLines, "")
 

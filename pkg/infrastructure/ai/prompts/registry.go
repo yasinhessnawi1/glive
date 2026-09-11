@@ -155,5 +155,3 @@ type VersionInfo struct {
 	Category     string
 	FilePath     string
 }
-
-

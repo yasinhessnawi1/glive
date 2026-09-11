@@ -51,5 +51,3 @@ func (f *CLIFlags) ToMap() map[string]interface{} {
 
 	return cfg
 }
-
-

@@ -162,15 +162,13 @@ func FormatExamples(examples []Example) string {
 	builder.WriteString("Here are some examples:\n\n")
 
 	for i, ex := range examples {
-		builder.WriteString(fmt.Sprintf("Example %d:\n", i+1))
-		builder.WriteString(fmt.Sprintf("Input: %v\n", ex.Input))
+		fmt.Fprintf(&builder, "Example %d:\n", i+1)
+		fmt.Fprintf(&builder, "Input: %v\n", ex.Input)
 		if ex.Reasoning != "" {
-			builder.WriteString(fmt.Sprintf("Reasoning: %s\n", ex.Reasoning))
+			fmt.Fprintf(&builder, "Reasoning: %s\n", ex.Reasoning)
 		}
-		builder.WriteString(fmt.Sprintf("Output: %v\n\n", ex.Output))
+		fmt.Fprintf(&builder, "Output: %v\n\n", ex.Output)
 	}
 
 	return builder.String()
 }
-
-

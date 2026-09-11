@@ -9,33 +9,33 @@ import (
 
 // ResourceMonitor monitors resource usage during sandbox execution
 type ResourceMonitor struct {
-	mu            sync.RWMutex
-	cpuUsage      float64
-	memoryUsed    int64
-	diskUsed      int64
-	networkSent   int64
-	networkRecv   int64
-	thresholds    ResourceThresholds
-	alerts        []ResourceAlert
-	monitoring    bool
-	stopChan      chan struct{}
+	mu          sync.RWMutex
+	cpuUsage    float64
+	memoryUsed  int64
+	diskUsed    int64
+	networkSent int64
+	networkRecv int64
+	thresholds  ResourceThresholds
+	alerts      []ResourceAlert
+	monitoring  bool
+	stopChan    chan struct{}
 }
 
 // ResourceThresholds defines thresholds for resource monitoring
 type ResourceThresholds struct {
-	MaxCPUPercent    float64
-	MaxMemoryBytes   int64
-	MaxDiskBytes     int64
-	MaxNetworkBytes  int64
+	MaxCPUPercent   float64
+	MaxMemoryBytes  int64
+	MaxDiskBytes    int64
+	MaxNetworkBytes int64
 }
 
 // ResourceAlert represents a resource threshold violation
 type ResourceAlert struct {
-	Resource   string
-	Value      float64
-	Threshold  float64
-	Timestamp  time.Time
-	Severity   string // "warning", "critical"
+	Resource  string
+	Value     float64
+	Threshold float64
+	Timestamp time.Time
+	Severity  string // "warning", "critical"
 }
 
 // NewResourceMonitor creates a new resource monitor
@@ -256,5 +256,3 @@ func (rm *ResourceMonitor) ShouldKill() bool {
 
 	return false
 }
-
-

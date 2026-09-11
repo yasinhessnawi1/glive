@@ -161,4 +161,3 @@ func (p *Pool) Close() {
 	p.wg.Wait()
 	close(p.results)
 }
-

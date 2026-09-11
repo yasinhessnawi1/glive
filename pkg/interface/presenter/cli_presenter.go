@@ -59,4 +59,3 @@ func (p CLIPresenter) PresentError(err error) error {
 	fmt.Fprintf(p.writer, "\n%s\n", formatted)
 	return err
 }
-

@@ -56,5 +56,3 @@ func convertEnvValue(key, value string) interface{} {
 	// String keys (default)
 	return value
 }
-
-

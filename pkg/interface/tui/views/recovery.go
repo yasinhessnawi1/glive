@@ -16,24 +16,24 @@ import (
 
 // RecoveryView represents the AI recovery view
 type RecoveryView struct {
-	state        *tui.AppState
-	projects     []*entities.Project
-	selectedIdx  int
+	state         *tui.AppState
+	projects      []*entities.Project
+	selectedIdx   int
 	viewportStart int // Start index of visible items
-	recoveryInfo []RecoveryInfo
+	recoveryInfo  []RecoveryInfo
 }
 
 // RecoveryInfo represents recovery information for a project
 type RecoveryInfo struct {
-	ProjectID      string
-	ProjectName    string
-	Status         string
-	HasRecovery    bool
-	RecoveryType   string
-	LastRecovery   time.Time
-	RecoveryCount  int
-	SuccessRate    float64
-	Description    string
+	ProjectID     string
+	ProjectName   string
+	Status        string
+	HasRecovery   bool
+	RecoveryType  string
+	LastRecovery  time.Time
+	RecoveryCount int
+	SuccessRate   float64
+	Description   string
 }
 
 // NewRecoveryView creates a new recovery view
@@ -57,7 +57,7 @@ func (r *RecoveryView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 		r.viewportStart = 0
 		r.selectedIdx = 0
 		return r, nil
-	
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc", "q":
@@ -120,19 +120,20 @@ func (r *RecoveryView) analyzeRecovery() {
 
 		// Determine recovery status based on project state
 		status := project.Status()
-		if status == entities.StatusFailed {
+		switch status {
+		case entities.StatusFailed:
 			info.HasRecovery = true
 			info.RecoveryType = "Manual Recovery Available"
 			info.Description = "Project failed. You can retry setup or use recovery strategies."
-		} else if status == entities.StatusReady {
+		case entities.StatusReady:
 			info.HasRecovery = false
 			info.RecoveryType = "No Recovery Needed"
 			info.Description = "Project is ready and running successfully."
-		} else if status == entities.StatusRunning || status == entities.StatusInstalling {
+		case entities.StatusRunning, entities.StatusInstalling:
 			info.HasRecovery = true
 			info.RecoveryType = "Auto-Recovery Active"
 			info.Description = "Project is running with automatic error recovery enabled."
-		} else {
+		default:
 			info.HasRecovery = false
 			info.RecoveryType = "Pending"
 			info.Description = "Project setup is pending."
@@ -290,11 +291,12 @@ func (r *RecoveryView) renderProjects() string {
 		actualIdx := start + i
 		// Format status icon
 		statusIcon := "○"
-		if info.Status == "failed" {
+		switch info.Status {
+		case "failed":
 			statusIcon = "✗"
-		} else if info.Status == "ready" {
+		case "ready":
 			statusIcon = "✓"
-		} else if info.Status == "running" || info.Status == "installing" {
+		case "running", "installing":
 			statusIcon = "⟳"
 		}
 
@@ -327,7 +329,7 @@ func (r *RecoveryView) renderProjects() string {
 	}
 
 	content := strings.Join(lines, "\n")
-	
+
 	// Add scroll indicator if needed
 	if len(r.recoveryInfo) > visibleHeight {
 		scrollInfo := fmt.Sprintf("\n(Showing %d-%d of %d)", start+1, end, len(r.recoveryInfo))
@@ -336,4 +338,3 @@ func (r *RecoveryView) renderProjects() string {
 
 	return tui.RenderBox(r.state, "Project Recovery Status", content, r.state.Width-4)
 }
-

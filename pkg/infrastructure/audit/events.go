@@ -97,5 +97,3 @@ func LogSecurityViolation(auditor Auditor, projectID, violationType, reason stri
 		},
 	)
 }
-
-

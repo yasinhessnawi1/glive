@@ -290,7 +290,7 @@ func (s *SetupView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 		case "esc", "q":
 			s.submitting = false
 			return s, tui.SwitchView(tui.ViewDashboard)
-		
+
 		// Arrow key navigation for modes
 		case "up":
 			// Navigate up through modes (wraps around)
@@ -300,7 +300,7 @@ func (s *SetupView) Update(msg tea.Msg) (tui.View, tea.Cmd) {
 			// Navigate down through modes (wraps around)
 			s.modeIndex = (s.modeIndex + 1) % len(s.modes)
 			return s, nil
-		
+
 		// Ctrl+F to toggle force option
 		case "ctrl+f":
 			s.force = !s.force

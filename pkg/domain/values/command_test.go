@@ -121,5 +121,3 @@ func TestValidatedCommand_Methods(t *testing.T) {
 		t.Errorf("expected working dir %q, got %q", workingDir, validated.WorkingDir())
 	}
 }
-
-

@@ -12,5 +12,3 @@ func parseJSON(data []byte) (map[string]interface{}, error) {
 	}
 	return cfg, nil
 }
-
-

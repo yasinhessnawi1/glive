@@ -14,8 +14,8 @@ import (
 // RotatingLogger manages log file rotation based on size, age, and backup limits
 type RotatingLogger struct {
 	basePath   string
-	maxSize    int64  // bytes
-	maxAge     int    // days
+	maxSize    int64 // bytes
+	maxAge     int   // days
 	maxBackups int
 	current    *rotatingFile
 	mu         sync.Mutex
@@ -23,10 +23,10 @@ type RotatingLogger struct {
 
 // rotatingFile represents a rotating file writer
 type rotatingFile struct {
-	file   *os.File
-	path   string
-	size   int64
-	mu     sync.Mutex
+	file *os.File
+	path string
+	size int64
+	mu   sync.Mutex
 }
 
 // RotatingConfig holds configuration for log rotation
@@ -125,12 +125,9 @@ func (rl *RotatingLogger) rotateIfNeeded() error {
 	rl.current.mu.Lock()
 	defer rl.current.mu.Unlock()
 
-	needsRotation := false
+	needsRotation := rl.maxSize > 0 && rl.current.size >= rl.maxSize
 
 	// Check size
-	if rl.maxSize > 0 && rl.current.size >= rl.maxSize {
-		needsRotation = true
-	}
 
 	// Check age
 	if rl.maxAge > 0 {
@@ -251,5 +248,3 @@ func NewRotatingWriter(config RotatingConfig) (io.Writer, error) {
 	}
 	return &RotatingWriter{RotatingLogger: rl}, nil
 }
-
-

@@ -56,4 +56,3 @@ func TestAnalysis_MarkSuspicious(t *testing.T) {
 		t.Errorf("expected %d suspicious reasons, got %d", len(reasons), len(analysis.SuspiciousReasons()))
 	}
 }
-
