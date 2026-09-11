@@ -37,6 +37,11 @@ type SafePath struct {
 
 // NewPath creates a new validated Path
 func NewPath(value string) (*Path, error) {
+	// Checked against the RAW input, before trimming — see rejectTrimmableControlChars.
+	if err := rejectTrimmableControlChars(value); err != nil {
+		return nil, err
+	}
+
 	value = strings.TrimSpace(value)
 	if value == "" {
 		return nil, errors.NewUserError("PATH_EMPTY", "Path cannot be empty")
@@ -60,8 +65,35 @@ func NewPath(value string) (*Path, error) {
 	return &Path{value: value}, nil
 }
 
+// rejectTrimmableControlChars rejects control characters that strings.TrimSpace
+// would silently remove: \n, \r, \v and \f. (Tab is excluded — the validator has
+// always permitted it, and space is not a control character.)
+//
+// Those four are the only control characters the post-trim check below could never
+// see, because trimming ran first and deleted them. The effect was that a path with
+// a leading or trailing newline was accepted and the caller got back a value
+// different from the one it passed — silent normalisation of a security-relevant
+// input, which is how argument- and log-injection bugs start.
+//
+// It deliberately does NOT check every control character: NUL and friends are still
+// caught by the existing post-trim checks, which keeps their error codes
+// (PATH_INVALID_CHAR for the dangerousChars set) unchanged for callers.
+func rejectTrimmableControlChars(s string) error {
+	for _, r := range s {
+		if unicode.IsControl(r) && unicode.IsSpace(r) && r != '\t' {
+			return errors.NewUserError("PATH_CONTROL_CHAR", "Path contains control characters")
+		}
+	}
+	return nil
+}
+
 // NewSafePath creates a new SafePath with root boundary enforcement
 func NewSafePath(path string, allowedRoot string) (*SafePath, error) {
+	// Checked against the RAW input, before trimming — same reason as NewPath.
+	if err := rejectTrimmableControlChars(path); err != nil {
+		return nil, err
+	}
+
 	// Trim and validate
 	path = strings.TrimSpace(path)
 	if path == "" {

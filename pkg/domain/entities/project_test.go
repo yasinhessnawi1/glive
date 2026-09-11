@@ -59,6 +59,29 @@ func TestNewProject(t *testing.T) {
 	}
 }
 
+// driveToStatus walks a freshly-created project (StatusPending) to target using
+// only legal transitions, so tests exercise the state machine instead of
+// bypassing it. It returns the first rejected transition's error.
+func driveToStatus(p *entities.Project, target entities.ProjectStatus) error {
+	// Legal routes from StatusPending, per Project.canTransitionTo.
+	routes := map[entities.ProjectStatus][]entities.ProjectStatus{
+		entities.StatusPending:    {},
+		entities.StatusCloning:    {entities.StatusCloning},
+		entities.StatusAnalyzing:  {entities.StatusAnalyzing},
+		entities.StatusInstalling: {entities.StatusAnalyzing, entities.StatusInstalling},
+		entities.StatusReady:      {entities.StatusAnalyzing, entities.StatusInstalling, entities.StatusReady},
+		entities.StatusRunning:    {entities.StatusAnalyzing, entities.StatusInstalling, entities.StatusReady, entities.StatusRunning},
+		entities.StatusFailed:     {entities.StatusFailed},
+		entities.StatusStopped:    {entities.StatusStopped},
+	}
+	for _, step := range routes[target] {
+		if err := p.SetStatus(step); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func TestProject_CanExecute(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -79,8 +102,14 @@ func TestProject_CanExecute(t *testing.T) {
 			projectID := values.GenerateProjectID()
 			project, _ := entities.NewProject(projectID, url, "test-project")
 
-			// Set status
-			project.SetStatus(tt.status)
+			// Drive the project to the target status through the real state machine.
+			// SetStatus rejects an illegal transition and returns an error. That error
+			// used to be discarded here, so "ready clean" silently stayed Pending
+			// (Pending -> Ready is not a legal edge) and CanExecute reported false for
+			// a reason the test could not surface.
+			if err := driveToStatus(project, tt.status); err != nil {
+				t.Fatalf("could not reach status %v: %v", tt.status, err)
+			}
 
 			// Set analysis if provided
 			if tt.analysis != nil {

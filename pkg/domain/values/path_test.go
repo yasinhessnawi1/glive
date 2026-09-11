@@ -3,6 +3,7 @@ package values_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/glive/domain/values"
@@ -46,23 +47,34 @@ func TestNewSafePath(t *testing.T) {
 	tempDir := testutil.TempDir(t)
 	allowedRoot := tempDir
 
+	// joinRoot says whether the case's path is relative to root (and so must be
+	// joined to it) or is passed to NewSafePath verbatim. The "empty path" case
+	// needs the latter: filepath.Join(root, "") returns root, a perfectly valid
+	// non-empty directory, so joining silently turned the empty-path case into a
+	// valid-path case that could never produce PATH_EMPTY.
 	tests := []struct {
-		name       string
-		path       string
-		root       string
-		wantErr    bool
+		name        string
+		path        string
+		root        string
+		joinRoot    bool
+		wantErr     bool
 		errContains string
 	}{
-		{"valid path under root", "subdir/file.txt", allowedRoot, false, ""},
-		{"path traversal", "../../../etc/passwd", allowedRoot, true, "PATH_TRAVERSAL"},
-		{"windows reserved name", "con", allowedRoot, true, "PATH_DANGEROUS"},
-		{"control character", "file\x00.txt", allowedRoot, true, "PATH_INVALID_CHAR"},
-		{"empty path", "", allowedRoot, true, "PATH_EMPTY"},
+		{"valid path under root", "subdir/file.txt", allowedRoot, true, false, ""},
+		{"path traversal", "../../../etc/passwd", allowedRoot, true, true, "PATH_TRAVERSAL"},
+		{"windows reserved name", "con", allowedRoot, true, true, "PATH_DANGEROUS"},
+		{"control character", "file\x00.txt", allowedRoot, true, true, "PATH_INVALID_CHAR"},
+		{"empty path", "", allowedRoot, false, true, "PATH_EMPTY"},
+		{"whitespace-only path", "   ", allowedRoot, false, true, "PATH_EMPTY"},
+		{"path with trailing newline", "subdir/file.txt\n", allowedRoot, false, true, "PATH_CONTROL_CHAR"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fullPath := filepath.Join(tt.root, tt.path)
+			fullPath := tt.path
+			if tt.joinRoot {
+				fullPath = filepath.Join(tt.root, tt.path)
+			}
 			safePath, err := values.NewSafePath(fullPath, tt.root)
 			if tt.wantErr {
 				if err == nil {
@@ -97,9 +109,14 @@ func TestSafePath_Join(t *testing.T) {
 		t.Error("joined path should not be empty")
 	}
 
-	// Verify it's still under root
-	if !filepath.HasPrefix(joined.Absolute(), tempDir) {
-		t.Errorf("joined path %q should be under root %q", joined.Absolute(), tempDir)
+	// Verify it's still under root. filepath.Rel is used rather than the deprecated
+	// filepath.HasPrefix, which compares raw strings: it does not respect path
+	// boundaries (so "/rootx" counts as being under "/root") and ignores case rules.
+	// A relative path that does not start with ".." proves real containment.
+	rel, err := filepath.Rel(tempDir, joined.Absolute())
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		t.Errorf("joined path %q should be under root %q (rel=%q, err=%v)",
+			joined.Absolute(), tempDir, rel, err)
 	}
 }
 

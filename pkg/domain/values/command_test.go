@@ -27,7 +27,14 @@ func TestCommandValidator_Validate(t *testing.T) {
 		{"command substitution", "npm install $(cat /etc/passwd)", true, "CMD_BLOCKED_PATTERN"},
 		{"redirect injection", "npm install > /etc/passwd", true, "CMD_BLOCKED_PATTERN"},
 		{"null byte", "npm install\x00rm -rf /", true, "CMD_NULL_BYTE"},
-		{"not allowed executable", "rm -rf /", true, "CMD_NOT_ALLOWED"},
+		// "rm -rf /" matches the dangerous-command blocked pattern, and blocked
+		// patterns are checked before the allow-list, so it is rejected as
+		// CMD_BLOCKED_PATTERN. That order is deliberate — the more specific,
+		// higher-signal rule wins — so this case asserts what the validator returns.
+		{"blocked dangerous executable", "rm -rf /", true, "CMD_BLOCKED_PATTERN"},
+		// Exercises the allow-list itself: "perl" is not allow-listed and matches no
+		// blocked pattern, so it is the case that genuinely reaches CMD_NOT_ALLOWED.
+		{"not allowed executable", "perl script.pl", true, "CMD_NOT_ALLOWED"},
 		{"command too long", string(make([]byte, 5000)), true, "CMD_TOO_LONG"},
 	}
 
@@ -58,6 +65,10 @@ func TestCommandValidator_Validate(t *testing.T) {
 func TestCommandValidator_QuoteHandling(t *testing.T) {
 	validator := values.NewCommandValidator()
 
+	// wantArgs counts the arguments AFTER the executable, matching Args(), which
+	// excludes it. The assertion below previously compared len(Args())+1 — the
+	// number of whole parts — against these values, so every row was off by one
+	// against its own field name.
 	tests := []struct {
 		name     string
 		command  string
@@ -79,8 +90,8 @@ func TestCommandValidator_QuoteHandling(t *testing.T) {
 				return
 			}
 
-			if len(validated.Args())+1 != tt.wantArgs {
-				t.Errorf("expected %d parts, got %d", tt.wantArgs, len(validated.Args())+1)
+			if len(validated.Args()) != tt.wantArgs {
+				t.Errorf("expected %d args, got %d (%q)", tt.wantArgs, len(validated.Args()), validated.Args())
 			}
 		})
 	}

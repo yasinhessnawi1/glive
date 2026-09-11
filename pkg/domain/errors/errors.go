@@ -61,19 +61,42 @@ func (e *GliveError) Is(target error) bool {
 	return false
 }
 
-// WithContext adds context to the error
-func (e *GliveError) WithContext(key, value string) *GliveError {
-	if e.Context == nil {
-		e.Context = make(map[string]string)
+// clone returns a copy of e with its own Context map, so the copy shares no
+// mutable state with the original.
+//
+// This exists because the package-level sentinels below (ErrInvalidURL and its
+// siblings) are shared *GliveError values. WithContext and WithCause used to
+// mutate the receiver in place, which turned every sentinel into shared mutable
+// global state — a data race under concurrency, and a violation of the
+// "no package-level mutable state" rule.
+func (e *GliveError) clone() *GliveError {
+	c := *e
+	if e.Context != nil {
+		c.Context = make(map[string]string, len(e.Context))
+		for k, v := range e.Context {
+			c.Context[k] = v
+		}
 	}
-	e.Context[key] = value
-	return e
+	return &c
 }
 
-// WithCause wraps an underlying error
+// WithContext returns a copy of the error with key=value added to its context.
+// The receiver is never modified, so this is safe to call on a shared sentinel.
+func (e *GliveError) WithContext(key, value string) *GliveError {
+	c := e.clone()
+	if c.Context == nil {
+		c.Context = make(map[string]string, 1)
+	}
+	c.Context[key] = value
+	return c
+}
+
+// WithCause returns a copy of the error wrapping err as its cause.
+// The receiver is never modified, so this is safe to call on a shared sentinel.
 func (e *GliveError) WithCause(err error) *GliveError {
-	e.Cause = err
-	return e
+	c := e.clone()
+	c.Cause = err
+	return c
 }
 
 // Builder functions for common error types

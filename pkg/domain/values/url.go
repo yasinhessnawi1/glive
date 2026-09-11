@@ -52,8 +52,16 @@ func NewURL(value string) (*URL, error) {
 		}
 	}
 
-	// Basic URL validation
-	if !strings.HasPrefix(value, "http://") && !strings.HasPrefix(value, "https://") && !strings.HasPrefix(value, "git@") {
+	// Basic URL validation.
+	//
+	// "ssh://" is accepted because ParseRepoURL in this same package normalises an
+	// scp-style remote (git@host:owner/repo.git) to ssh://git@host/owner/repo.git.
+	// Without it NewURL rejected a value its own sibling had just produced, so a
+	// valid SSH repository could never become a Project. The blocked-pattern checks
+	// above (localhost, file://, traversal, control characters) run first and apply
+	// to every scheme, so accepting ssh:// widens no SSRF surface.
+	if !strings.HasPrefix(value, "http://") && !strings.HasPrefix(value, "https://") &&
+		!strings.HasPrefix(value, "git@") && !strings.HasPrefix(value, "ssh://") {
 		// Try short form: owner/repo
 		if matches := regexp.MustCompile(`^([a-zA-Z0-9_.-]+)/([a-zA-Z0-9_.-]+)$`).FindStringSubmatch(value); matches != nil {
 			value = "https://github.com/" + matches[1] + "/" + matches[2]
@@ -183,9 +191,25 @@ func (r *RepoURL) String() string {
 	return r.original
 }
 
-// CloneURL returns the URL for cloning
+// providerHosts maps a provider name to its canonical host. It exists because
+// CloneURL used to build the host as provider+".com", which is right for github
+// and gitlab and wrong for bitbucket (bitbucket.org) — that produced an
+// unreachable clone URL for every Bitbucket repository.
+var providerHosts = map[string]string{
+	"github":    "github.com",
+	"gitlab":    "gitlab.com",
+	"bitbucket": "bitbucket.org",
+}
+
+// CloneURL returns the HTTPS URL for cloning. An unknown provider falls back to
+// provider+".com" — the previous behaviour — so a provider added to the parser
+// without a row here degrades exactly as before rather than returning "".
 func (r *RepoURL) CloneURL() string {
-	return fmt.Sprintf("https://%s.com/%s/%s.git", r.provider, r.owner, r.repo)
+	host, ok := providerHosts[r.provider]
+	if !ok {
+		host = r.provider + ".com"
+	}
+	return fmt.Sprintf("https://%s/%s/%s.git", host, r.owner, r.repo)
 }
 
 // Owner returns the repository owner
