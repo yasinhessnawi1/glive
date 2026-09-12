@@ -17,6 +17,32 @@ run:
   timeout: 5m
   tests: true
 
+issues:
+  # baseline — burned down by T6/T8/T9/T14; removed at T8 together with the
+  # deletion-set exclusion. (2026-09-12)
+  #
+  # Every NEW or CHANGED line is linted in full. The 112 findings that predate
+  # this commit are not suppressed and not forgotten - each is owned by the task
+  # that already has to touch its file, and the whole set is tracked as
+  # AUDIT-F-28:
+  #
+  #   gosec G204 (16)  -> T9, with the security-reviewer: verify per site that
+  #                       the command-validator guard actually covers it
+  #   gosec G304  (8)  -> T14
+  #   errcheck: the 3 unchecked StateManager.SaveProject in agent handlers
+  #                    -> T6, where routing through the usecase forces the
+  #                       behaviour decision anyway
+  #   errcheck: the rest -> whichever task touches the file
+  #   unused     (22)  -> T8, with the pkg/core deletion
+  #   staticcheck SA1029 x2 in tracing/context.go -> whichever task introduces a
+  #                       shared context-key type; tracing writes "trace_id" with
+  #                       a bare string key and logging reads it back, so neither
+  #                       side can be fixed alone
+  #
+  # This is a baseline, not an amnesty: the count only goes down. No //nolint was
+  # written anywhere to reach it.
+  new-from-rev: e1df509f922da7eddf19e9618f78ff3a4d37ebdd
+
 linters:
   # "standard" is the v2 default set: errcheck, govet, ineffassign, staticcheck,
   # unused. Note gosimple no longer exists in v2 — it was folded into staticcheck.
