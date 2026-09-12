@@ -40,7 +40,13 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
+      # Full history: .golangci.yml carries a new-from-rev baseline, and a
+      # shallow checkout cannot resolve that revision. Without it the diff
+      # processor fails and EVERY baselined finding surfaces (24 gosec in
+      # pkg/infrastructure alone), so lint went red on every push (AUDIT-F-28).
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Install X11 dependencies
         run: |
           sudo apt-get update
