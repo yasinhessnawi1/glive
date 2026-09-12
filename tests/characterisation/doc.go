@@ -22,11 +22,12 @@
 //	Step 7  ready            setup_project.go:501
 //
 // SCOPE. Steps 1, 3, 4 and 5 are covered here by driving the same components
-// Execute drives, constructed directly. Steps 2, 6 and 7 - and Execute's
-// end-to-end orchestration - are NOT covered, because they cannot be reached
-// with fakes today: Execute depends on a concrete *container.Container whose
-// fields are unexported and whose only constructor wires real implementations.
-// See the T1 report; the seam is a design call for the orchestrator.
+// Execute drives, constructed directly.
+//
+// Steps 2, 6, 7 and Execute's end-to-end ordering are covered separately, in
+// pkg/usecase/project/characterisation_test.go, which drives Execute itself
+// through the container option seam added at T1b. The auto-fix loop is covered in
+// pkg/infrastructure/executor, where it actually lives.
 //
 // NO NETWORK, NO AI. The clone tests use a git repository created in a temp
 // directory and cloned from a local path, so `git clone` runs for real but
