@@ -3,6 +3,7 @@ package values_test
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/glive/domain/values"
@@ -149,4 +150,50 @@ func TestNewSafePath_ContainmentIsByComponentNotPrefix(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestNewSafePath_RejectsBackslashOnNonWindows is the regression test for the
+// Ubuntu CI failure: on POSIX a backslash is an ordinary filename character, so
+// "..\..\etc" joined under the root was a file INSIDE the root and the traversal
+// was not detected. GLive paths come from repositories, URLs and AI output; a
+// backslash on Linux or macOS is never a legitimate path, so it fails closed.
+func TestNewSafePath_RejectsBackslashOnNonWindows(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("backslash is the native separator on Windows; traversal is handled by filepath.Clean there")
+	}
+	root := testutil.TempDir(t)
+
+	tests := []struct {
+		name string
+		path string
+	}{
+		{"backslash traversal", root + "/..\\..\\etc"},
+		{"mixed separators", root + "/../..\\etc"},
+		{"backslash in a filename", root + "/sub\\file.txt"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := values.NewSafePath(tt.path, root)
+			if err == nil {
+				t.Fatalf("NewSafePath(%q, %q) accepted a backslash path on %s", tt.path, root, runtime.GOOS)
+			}
+			testutil.AssertContains(t, err.Error(), "PATH_INVALID_CHAR")
+		})
+	}
+}
+
+// TestNewSafePath_BackslashTraversalOnWindows keeps the security property on the
+// platform where backslash IS the separator: "..\..\etc" under the root is a
+// lexical traversal and must be rejected as such.
+func TestNewSafePath_BackslashTraversalOnWindows(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows-only: backslash is a separator here")
+	}
+	root := testutil.TempDir(t)
+	_, err := values.NewSafePath(root+`\..\..\etc`, root)
+	if err == nil {
+		t.Fatal("backslash traversal accepted on Windows")
+	}
+	testutil.AssertContains(t, err.Error(), "PATH_TRAVERSAL")
 }

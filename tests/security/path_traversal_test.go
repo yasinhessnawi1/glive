@@ -3,6 +3,7 @@ package security
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/glive/domain/values"
@@ -34,7 +35,15 @@ func TestPathTraversalPrevention_Comprehensive(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			fullPath := filepath.Join(allowedRoot, tt.path)
+			// An absolute candidate is passed verbatim. Joining it under the root
+			// would turn "/etc/passwd" into "<root>/etc/passwd" - a path that IS
+			// inside the root - and the case would test nothing. The guard itself
+			// never joins: an absolute path is accepted only if it is under the
+			// root after canonicalisation.
+			fullPath := tt.path
+			if !filepath.IsAbs(tt.path) {
+				fullPath = filepath.Join(allowedRoot, tt.path)
+			}
 			_, err := values.NewSafePath(fullPath, allowedRoot)
 			if tt.wantErr {
 				if err == nil {
@@ -147,5 +156,50 @@ func TestSiblingWithSharedPrefixIsOutsideRoot(t *testing.T) {
 	}
 	if _, err := values.NewSafePath(filepath.Join(sibling, "file.txt"), root); err == nil {
 		t.Errorf("expected a child of %q to be outside root %q", sibling, root)
+	}
+}
+
+// TestBackslashIsRejectedOnNonWindows is the regression test for the Ubuntu CI
+// failure: on POSIX a backslash is a filename character, so "..\..\etc" joined
+// under the root named a file INSIDE the root and was accepted. GLive paths come
+// from repositories, URLs and AI output; a backslash on Linux or macOS is never
+// legitimate, so the guard fails closed on it.
+func TestBackslashIsRejectedOnNonWindows(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("backslash is the native separator on Windows")
+	}
+	root := testutil.TempDir(t)
+	for _, path := range []string{
+		root + "/..\\..\\etc",
+		root + "/sub\\file.txt",
+	} {
+		t.Run(path, func(t *testing.T) {
+			_, err := values.NewSafePath(path, root)
+			if err == nil {
+				t.Fatalf("expected backslash path to be rejected: %q", path)
+			}
+			testutil.AssertContains(t, err.Error(), "PATH_INVALID_CHAR")
+		})
+	}
+}
+
+func TestRootBoundaryEnforcement(t *testing.T) {
+	tempDir := testutil.TempDir(t)
+	allowedRoot := filepath.Join(tempDir, "workspace")
+	err := os.MkdirAll(allowedRoot, 0755)
+	testutil.AssertNoError(t, err)
+
+	// Paths outside root should be blocked
+	outsidePath := filepath.Join(tempDir, "outside")
+	_, err = values.NewSafePath(outsidePath, allowedRoot)
+	if err == nil {
+		t.Error("expected path outside root to be blocked")
+	}
+
+	// Paths inside root should be allowed
+	insidePath := filepath.Join(allowedRoot, "inside")
+	_, err = values.NewSafePath(insidePath, allowedRoot)
+	if err != nil {
+		t.Errorf("unexpected error for path inside root: %v", err)
 	}
 }

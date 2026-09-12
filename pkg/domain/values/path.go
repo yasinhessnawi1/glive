@@ -3,6 +3,7 @@ package values
 import (
 	"fmt"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"unicode"
 
@@ -114,6 +115,10 @@ func NewSafePath(path string, allowedRoot string) (*SafePath, error) {
 		}
 	}
 
+	if err := rejectForeignSeparator(path); err != nil {
+		return nil, err
+	}
+
 	// Canonicalise BOTH sides the same way before comparing them. Resolving only
 	// the candidate (as this used to) reports /tmp as outside /tmp on macOS, where
 	// /tmp is a symlink, and C:\Users\RUNNER~1\... as outside itself on Windows.
@@ -158,6 +163,20 @@ func NewSafePath(path string, allowedRoot string) (*SafePath, error) {
 		relative: relPath,
 		root:     absRoot,
 	}, nil
+}
+
+// rejectForeignSeparator fails closed on a backslash where it is not a path
+// separator. On POSIX a backslash is an ordinary filename character, so
+// "..\\..\\etc" joined under a root names a file INSIDE the root and no traversal
+// check can see it. GLive paths come from repositories, URLs and AI output; a
+// backslash on Linux or macOS is never a legitimate path. On Windows the
+// backslash IS the separator and filepath.Clean handles traversal in it.
+func rejectForeignSeparator(path string) error {
+	if runtime.GOOS != "windows" && strings.ContainsRune(path, '\\') {
+		return errors.NewUserError("PATH_INVALID_CHAR",
+			fmt.Sprintf("Path contains invalid character: %q", '\\'))
+	}
+	return nil
 }
 
 // Value returns the string value of the Path
