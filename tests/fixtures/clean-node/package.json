@@ -1,0 +1,13 @@
+{
+  "name": "clean-node-fixture",
+  "version": "1.0.0",
+  "description": "A deliberately boring Node fixture with no scanner findings.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "lodash": "4.17.21"
+  }
+}
