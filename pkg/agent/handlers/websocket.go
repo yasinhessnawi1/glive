@@ -91,7 +91,7 @@ func (h *Handler) eventToJSON(event interface{}) ([]byte, error) {
 
 // HandleWebSocket handles WebSocket connections for real-time updates
 func (h *Handler) HandleWebSocket(c *websocket.Conn) {
-	projectID := c.Params("project_id")
+	projectID := strings.Clone(c.Params("project_id"))
 
 	log.Printf("WebSocket connected for project: %s", projectID)
 

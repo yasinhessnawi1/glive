@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 
@@ -43,39 +44,26 @@ import (
 // handlers take their not-found and validation paths. Creating a project would
 // clone and call a provider, which is out of scope.
 //
-// AGENT-RACE - A DEFECT THESE TESTS FOUND, NOT FIXED HERE.
+// AGENT-RACE (AUDIT-F-34) - found by these tests, fixed at T2b.
 //
-// Every test below uses a FRESH app, and that is not only for isolation. Sharing
-// one app made the suite fail under -race roughly one run in three, and the
-// detector pointed at production code, not at the harness:
+// Handlers read request values with c.Params / c.Query / c.Body, which alias
+// Fiber's POOLED request buffer and are valid only for the lifetime of the
+// handler. Several handlers hand those values to goroutines that outlive the
+// request, and StartProject was caught doing it by the race detector:
 //
 //	Write by fiber's AcquireCtx -> configDependentPaths (the next request)
 //	Read  by handlers.(*Handler).StartProject.func1 at projects.go:180
 //
-// handlers.StartProject does:
+// The id feeds Orchestrator.StartProject and EventBus.Publish, so once a
+// concurrent request reused the buffer the goroutine could act on, and publish
+// events for, a DIFFERENT project than the caller asked about - a cross-request
+// integrity bug, and a cross-tenant one in Mode A once the agent is hosted.
 //
-//	projectID := c.Params("id")   // aliases fiber's POOLED request buffer
-//	go func() { ... uses projectID ... }()
-//	return api.SuccessResponse(...)   // request ends; fiber recycles the buffer
+// pkg/agent/handlers now clones every request value where it is read.
+// TestContract_RequestValuesDoNotOutliveTheRequest below is the regression:
+// it reuses ONE app so the buffer is recycled under the running goroutine, which
+// is what the detector needs to see.
 //
-// fiber is explicit that values from c.Params / c.Query / c.Body are valid only
-// for the lifetime of the handler and must be copied to outlive it. Nothing in
-// pkg/agent/handlers copies one: there are four goroutine sites
-// (projects.go:82, :171, :276 and websocket.go:158) and not a single
-// utils.CopyString among them.
-//
-// The consequence is worse than corrupted log output. The captured id is used
-// for h.Orchestrator.StartProject and for h.EventBus.Publish(projectID, ...), so
-// once a concurrent request overwrites the buffer, the background goroutine can
-// operate on - and publish events for - a DIFFERENT project than the one asked
-// for. On the websocket path the goroutine is long-lived, which makes the window
-// correspondingly wide: a client subscribed to one project can be served another
-// project's events. That is a cross-request data-integrity bug today and a
-// cross-tenant one in Mode A.
-//
-// Using a fresh app per test removes the window from THIS suite; it does not fix
-// the product. Reported at the T2 gate for a ruling.
-
 // ---------------------------------------------------------------- harness
 
 // newRouteApp mounts the real handlers on a bare fiber app: same routes, same
@@ -581,4 +569,37 @@ func TestContract_HealthIsOutsideTheAPIGroup(t *testing.T) {
 				status, i+1)
 		}
 	}
+}
+
+// TestContract_RequestValuesDoNotOutliveTheRequest is the regression for
+// AUDIT-F-34.
+//
+// It deliberately does what the rest of this file avoids: reuse ONE app across
+// several requests. POST /projects/:id/start leaves a goroutine running that
+// holds whatever the handler captured, and the requests that follow drive Fiber
+// to recycle the buffer underneath it. Before the fix the race detector reported
+// a write from AcquireCtx against a read in StartProject.func1; with the values
+// cloned there is nothing shared left to race on.
+//
+// Run under -race. Without -race it still exercises the path but proves nothing.
+func TestContract_RequestValuesDoNotOutliveTheRequest(t *testing.T) {
+	app := newRouteApp(t)
+
+	// Start several projects, so several goroutines are in flight holding ids.
+	for _, id := range []string{"alpha", "bravo", "charlie", "delta"} {
+		if status, _ := do(t, app, "POST", "/api/v1/projects/"+id+"/start", ""); status != http.StatusOK {
+			t.Fatalf("start %s: status = %d, want 200", id, status)
+		}
+	}
+
+	// Now hammer the same app so the pooled buffers are reused while those
+	// goroutines are still alive. Longer paths make reuse more likely to be
+	// visible by changing the buffer contents rather than just its bytes.
+	for i := 0; i < 40; i++ {
+		do(t, app, "GET", "/api/v1/projects/a-much-longer-project-identifier-than-the-first", "")
+		do(t, app, "GET", "/api/v1/projects", "")
+	}
+
+	// Give the background goroutines a moment to run against the reused buffers.
+	time.Sleep(50 * time.Millisecond)
 }

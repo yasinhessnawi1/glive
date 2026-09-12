@@ -22,6 +22,25 @@ type CreateProjectRequest struct {
 	ForceExecution bool   `json:"force_execution"`
 }
 
+// Fiber request values are COPIED before use.
+//
+// c.Params, c.Query and c.Body return strings that alias Fiber's pooled request
+// buffer. They are valid only for the lifetime of the handler: once it returns,
+// Fiber recycles the buffer for the next request. Several handlers here hand
+// these values to goroutines that outlive the request - the background start,
+// the ZIP streamer, the WebSocket loop - and one of them, StartProject, was
+// caught doing exactly that by the race detector (AUDIT-F-34).
+//
+// The consequence was worse than garbled logs: the captured id feeds
+// Orchestrator.StartProject and EventBus.Publish, so once a concurrent request
+// reused the buffer the goroutine could act on, and publish events for, a
+// different project than the caller asked about.
+//
+// The rule is therefore uniform rather than per-site: every request value is
+// cloned where it is read, whether or not today's code lets it escape. Reasoning
+// about escape per call site is what let this in, and it would have to be redone
+// correctly by every future edit that adds a goroutine.
+//
 // ListProjects returns all projects
 func (h *Handler) ListProjects(c *fiber.Ctx) error {
 	projects := h.StateManager.ListProjects()
@@ -41,6 +60,13 @@ func (h *Handler) CreateProject(c *fiber.Ctx) error {
 	if req.GitHubURL == "" {
 		return api.BadRequest(c, "MISSING_GITHUB_URL", "github_url is required", nil)
 	}
+
+	// Copied for the same reason as the path parameters above: this value is
+	// captured by the background goroutine below and must not alias any buffer
+	// Fiber may recycle when the request returns. BodyParser happens to allocate
+	// for application/json, but it does not for every content type it accepts,
+	// and the safety of this line should not depend on the request's header.
+	req.GitHubURL = strings.Clone(req.GitHubURL)
 
 	// Determine execution mode
 	mode := core.ModeAuto
@@ -136,7 +162,7 @@ func (h *Handler) CreateProject(c *fiber.Ctx) error {
 
 // GetProject returns a specific project
 func (h *Handler) GetProject(c *fiber.Ctx) error {
-	projectID := c.Params("id")
+	projectID := strings.Clone(c.Params("id"))
 
 	project, err := h.StateManager.LoadProject(projectID)
 	if err != nil {
@@ -148,7 +174,7 @@ func (h *Handler) GetProject(c *fiber.Ctx) error {
 
 // DeleteProject deletes a project
 func (h *Handler) DeleteProject(c *fiber.Ctx) error {
-	projectID := c.Params("id")
+	projectID := strings.Clone(c.Params("id"))
 
 	if err := h.StateManager.DeleteProject(projectID); err != nil {
 		return api.InternalError(c, "DELETE_FAILED", "Failed to delete project")
@@ -163,7 +189,7 @@ func (h *Handler) DeleteProject(c *fiber.Ctx) error {
 
 // StartProject starts a project
 func (h *Handler) StartProject(c *fiber.Ctx) error {
-	projectID := c.Params("id")
+	projectID := strings.Clone(c.Params("id"))
 
 	fmt.Printf("🚀 StartProject called for project: %s\n", projectID)
 
@@ -192,7 +218,7 @@ func (h *Handler) StartProject(c *fiber.Ctx) error {
 
 // StopProject stops a running project
 func (h *Handler) StopProject(c *fiber.Ctx) error {
-	projectID := c.Params("id")
+	projectID := strings.Clone(c.Params("id"))
 
 	// Try to stop through orchestrator (this will cancel the context)
 	err := h.Orchestrator.StopProject(projectID)
@@ -233,7 +259,7 @@ func (h *Handler) StopProject(c *fiber.Ctx) error {
 
 // CleanupProject cleans up a project
 func (h *Handler) CleanupProject(c *fiber.Ctx) error {
-	projectID := c.Params("id")
+	projectID := strings.Clone(c.Params("id"))
 
 	if err := h.Orchestrator.CleanupProject(projectID); err != nil {
 		return api.InternalError(c, "CLEANUP_FAILED", fmt.Sprintf("Failed to cleanup project: %v", err))
@@ -248,7 +274,7 @@ func (h *Handler) CleanupProject(c *fiber.Ctx) error {
 
 // DownloadProjectZip creates and streams a ZIP file of the project
 func (h *Handler) DownloadProjectZip(c *fiber.Ctx) error {
-	projectID := c.Params("id")
+	projectID := strings.Clone(c.Params("id"))
 
 	project, err := h.StateManager.LoadProject(projectID)
 	if err != nil {
@@ -352,7 +378,7 @@ func (h *Handler) DownloadProjectZip(c *fiber.Ctx) error {
 
 // GetVSCodeURL returns URLs for opening the project in VS Code
 func (h *Handler) GetVSCodeURL(c *fiber.Ctx) error {
-	projectID := c.Params("id")
+	projectID := strings.Clone(c.Params("id"))
 
 	project, err := h.StateManager.LoadProject(projectID)
 	if err != nil {
@@ -426,8 +452,8 @@ type ExecutionReport struct {
 
 // GetExecutionReport generates a detailed execution report for a project
 func (h *Handler) GetExecutionReport(c *fiber.Ctx) error {
-	projectID := c.Params("id")
-	format := c.Query("format", "json") // json or markdown
+	projectID := strings.Clone(c.Params("id"))
+	format := strings.Clone(c.Query("format", "json")) // json or markdown
 
 	project, err := h.StateManager.LoadProject(projectID)
 	if err != nil {
