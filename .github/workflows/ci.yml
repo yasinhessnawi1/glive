@@ -13,8 +13,11 @@ on:
 env:
   GO_VERSION: '1.26.8'
   GOLANGCI_VERSION: 'v2.13.2'
-  GOSEC_VERSION: 'v2.22.9'
   GOVULNCHECK_VERSION: 'v1.1.4'
+  # gosec is not pinned here: it runs inside golangci-lint (see the security job),
+  # so its version is golangci-lint's. The task-level `gosec ./...` gate that
+  # security-touching work runs by hand should use v2.22.9, the version the GL0
+  # T0a/T0b gates were measured with.
 
 # NOTE ON MODULE ENUMERATION (AUDIT-F-22).
 # This workflow never hand-maintains a list of modules. Four such lists existed
@@ -111,24 +114,24 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libx11-dev
-      # Both tools were installed with @latest, which makes the tools that guard
-      # the supply chain part of it (standards section 5).
-      - name: Install pinned scanners
-        run: |
-          go install "github.com/securego/gosec/v2/cmd/gosec@${GOSEC_VERSION}"
-          go install "golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}"
+      # govulncheck was installed with @latest, which makes a tool that guards the
+      # supply chain part of it (standards section 5).
+      - name: Install pinned scanner
+        run: go install "golang.org/x/vuln/cmd/govulncheck@${GOVULNCHECK_VERSION}"
         shell: bash
-      - name: gosec (every workspace module)
-        run: |
-          set -euo pipefail
-          status=0
-          while IFS= read -r dir; do
-            echo "::group::gosec ${dir}"
-            (cd "$dir" && gosec ./...) || status=1
-            echo "::endgroup::"
-          done < <(go list -m -f '{{.Dir}}')
-          exit "$status"
-        shell: bash
+      # gosec is NOT run standalone here. It is enabled inside golangci-lint (see
+      # .golangci.yml `linters.enable`), so it runs on every module in the lint
+      # job above, under the same config and the same new-from-rev baseline.
+      #
+      # Running the gosec binary here as well would apply a SECOND, unbaselined
+      # definition of "clean": it exits 1 on any finding, and it does so today on
+      # seven of the nine modules. That is the same three-versions-of-clean drift
+      # this workflow exists to remove (AUDIT-F-05), just with gosec instead of
+      # golangci-lint. One tool, one config, one baseline.
+      #
+      # The task-level `gosec ./...` gate for security-touching work (GL0 T9/T12/
+      # T14/T15) is a separate, manual reviewer step - it is meant to surface the
+      # full finding list for triage, which is exactly what a CI gate must not do.
       - name: govulncheck (every workspace module)
         run: |
           set -euo pipefail
