@@ -2,6 +2,7 @@ package executor_test
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 
@@ -78,54 +79,50 @@ func failingCommand(workingDir string) *executor.Command {
 	}
 }
 
-// TestAutoFix_AttemptCeilingIsPerRecursionLevel_NotGlobal pins a DEFECT found by
-// writing this test.
+// TestAutoFix_TotalAttemptsAreBoundedAcrossRecursion is the regression test for
+// AUDIT-F-33.
 //
-// executor.go:346 reads `maxRetries := 5`, and the loop it guards looks like a
-// hard ceiling of five recovery attempts per command. It is not. When the AI
-// offers a fix, executor.go:393 RETRIES BY CALLING Execute RECURSIVELY - and the
-// recursive call enters the same block and starts a fresh `maxRetries := 5` loop
-// of its own. The budget is therefore 5 per level with no bound on depth, not 5
-// overall.
+// executor.go:346 read `maxRetries := 5`, which looked like a hard ceiling of
+// five recovery attempts per command. It was not: the retry at executor.go:393
+// called Execute RECURSIVELY, and the recursive call started a fresh five-attempt
+// loop of its own. The budget was five PER LEVEL with no bound on depth.
 //
 // With an AI that keeps returning plausible-but-still-failing commands - the
-// normal failure mode of an LLM asked to repair a broken build - this recurses
-// until the stack is exhausted. Measured before this test was capped: the run
-// did not terminate within 240s and the panic trace was a solid column of
-// Execute frames at executor.go:393.
+// ordinary failure mode of a model asked to repair a broken build - recovery did
+// not terminate. Before the fix this test did not finish within 240s and the
+// panic trace was a solid column of Execute frames at :393; capping the fake at
+// twelve offers produced 23 AutoFixError calls against a documented ceiling of 5.
 //
-// Why it matters beyond a hang: every level re-executes commands in the user's
-// project, so an unbounded recursion means unbounded execution of AI-suggested
-// commands, and unbounded provider spend, on code GLive already treats as
-// untrusted. The ceiling that is supposed to contain that does not hold.
+// It was not only a hang. Every level re-executes commands in the user's project,
+// so the unbounded recursion meant unbounded execution of AI-suggested commands,
+// and unbounded provider spend, against code GLive treats as untrusted.
 //
-// This test does NOT fix it - T1b is characterisation. It caps the fake so the
-// recursion unwinds, then asserts the count EXCEEDS five, which is the proof that
-// the ceiling is per-level. When the recursion is replaced by a bounded loop with
-// a global budget, this assertion flips and whoever fixes it updates the pin.
-func TestAutoFix_AttemptCeilingIsPerRecursionLevel_NotGlobal(t *testing.T) {
-	const cap = 12 // > 5, and small enough to unwind quickly
-
+// The fake offers a fix twelve times - more than the budget - so an unbounded
+// implementation would exceed five. A bounded one stops at exactly five and
+// returns ErrRecoveryExhausted.
+func TestAutoFix_TotalAttemptsAreBoundedAcrossRecursion(t *testing.T) {
 	ai := &countingAI{
 		fixable:      true,
 		fixCmd:       "git rev-parse --verify also-not-a-ref-xyzzy",
-		declineAfter: cap,
+		declineAfter: 12, // deliberately greater than the 5-attempt budget
 	}
 	exec := executor.New(t.TempDir(), executor.ModeAuto, ai)
 
 	cmd := failingCommand(t.TempDir())
-	if err := exec.Execute(context.Background(), cmd, func(string) {}); err == nil {
+	err := exec.Execute(context.Background(), cmd, func(string) {})
+
+	if err == nil {
 		t.Fatal("Execute() succeeded on a command that cannot succeed")
+	}
+	if !errors.Is(err, executor.ErrRecoveryExhausted) {
+		t.Errorf("Execute() = %v, want it to wrap ErrRecoveryExhausted", err)
 	}
 
 	_, autoFix := ai.counts()
-	if autoFix <= 5 {
-		t.Errorf("AutoFixError called %d times; expected MORE than 5 because the retry at "+
-			"executor.go:393 recurses and each level restarts maxRetries. If this now stops "+
-			"at 5, the ceiling has been made global - update this characterisation.", autoFix)
+	if autoFix != 5 {
+		t.Errorf("AutoFixError called %d times, want exactly 5 - the budget must hold "+
+			"ACROSS the recursive retry at executor.go:393, not per level", autoFix)
 	}
-	t.Logf("AutoFixError called %d time(s) before the fake stopped offering fixes "+
-		"(the documented ceiling is 5)", autoFix)
 }
 
 // TestAutoFix_StopsEarlyWhenNoFixIsOffered pins the other exit from the loop: an

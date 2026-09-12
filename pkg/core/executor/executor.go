@@ -3,6 +3,7 @@ package executor
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -43,9 +44,49 @@ func New(workingDir string, mode types.ExecutionMode, aiClient AIClient) *Execut
 // OutputHandler is called for each line of output
 type OutputHandler func(line string)
 
+// maxRecoveryAttempts caps how many AI recovery strategies may be applied to a
+// single command in TOTAL, across the whole recovery.
+const maxRecoveryAttempts = 5
+
+// ErrRecoveryExhausted is returned when recovery used its whole attempt budget
+// without producing a command that runs.
+var ErrRecoveryExhausted = errors.New("auto-fix recovery exhausted")
+
+// recoveryBudget is the shared, decrementing attempt count for one call to
+// Execute.
+//
+// The recovery loops below retry by calling Execute RECURSIVELY, and each
+// recursive call fetched a fresh list of strategies and worked through all of
+// them. Nothing bounded the depth - the maxRetries field on Executor was set to
+// 3 and then never read - so an AI that keeps offering plausible-but-still-
+// failing commands drove recovery without limit, re-executing commands in the
+// user's project at every level.
+//
+// This is the same defect as pkg/infrastructure/executor, fixed the same way.
+// The agent server runs on THIS copy until GL0 T6 routes it through the use
+// case, so it cannot wait for the twin to be deleted.
+type recoveryBudget struct {
+	remaining int
+}
+
+// use consumes one attempt, reporting whether one was available.
+func (b *recoveryBudget) use() bool {
+	if b.remaining <= 0 {
+		return false
+	}
+	b.remaining--
+	return true
+}
+
 // Execute runs a command and streams output
 // All long-running operations MUST accept context for cancellation
 func (e *Executor) Execute(ctx context.Context, cmd *types.Command, outputHandler OutputHandler) error {
+	return e.execute(ctx, cmd, outputHandler, &recoveryBudget{remaining: maxRecoveryAttempts})
+}
+
+// execute is Execute's body, carrying the recovery budget shared by the
+// recursive retries. See recoveryBudget.
+func (e *Executor) execute(ctx context.Context, cmd *types.Command, outputHandler OutputHandler, budget *recoveryBudget) error {
 	// Check for context cancellation before starting
 	select {
 	case <-ctx.Done():
@@ -119,11 +160,20 @@ func (e *Executor) Execute(ctx context.Context, cmd *types.Command, outputHandle
 						map[bool]string{true: "strategy", false: "strategies"}[len(strategies) == 1]))
 				}
 
-				// Try each strategy in order
+				// Try each strategy in order, while the shared budget lasts. The
+				// budget is what bounds the recursion: without it each recursive
+				// retry fetched a fresh strategy list and started over.
 				for i, strategy := range strategies {
+					if !budget.use() {
+						if outputHandler != nil {
+							outputHandler(fmt.Sprintf("   ⛔ Recovery budget of %d attempts exhausted; giving up",
+								maxRecoveryAttempts))
+						}
+						break
+					}
 					if outputHandler != nil {
-						outputHandler(fmt.Sprintf("   ▶️  Strategy %d/%d: %s",
-							i+1, len(strategies), strategy.Name()))
+						outputHandler(fmt.Sprintf("   ▶️  Strategy %d/%d: %s (%d of %d attempts left)",
+							i+1, len(strategies), strategy.Name(), budget.remaining, maxRecoveryAttempts))
 					}
 
 					// Apply the strategy
@@ -159,7 +209,7 @@ func (e *Executor) Execute(ctx context.Context, cmd *types.Command, outputHandle
 					cmd.Status = types.CommandPending
 
 					// Retry with fixed command
-					retryErr := e.Execute(ctx, cmd, outputHandler)
+					retryErr := e.execute(ctx, cmd, outputHandler, budget)
 					if retryErr == nil {
 						// Success!
 						if outputHandler != nil {
@@ -255,11 +305,20 @@ func (e *Executor) Execute(ctx context.Context, cmd *types.Command, outputHandle
 						map[bool]string{true: "strategy", false: "strategies"}[len(strategies) == 1]))
 				}
 
-				// Try each strategy in order
+				// Try each strategy in order, while the shared budget lasts. The
+				// budget is what bounds the recursion: without it each recursive
+				// retry fetched a fresh strategy list and started over.
 				for i, strategy := range strategies {
+					if !budget.use() {
+						if outputHandler != nil {
+							outputHandler(fmt.Sprintf("   ⛔ Recovery budget of %d attempts exhausted; giving up",
+								maxRecoveryAttempts))
+						}
+						break
+					}
 					if outputHandler != nil {
-						outputHandler(fmt.Sprintf("   ▶️  Strategy %d/%d: %s",
-							i+1, len(strategies), strategy.Name()))
+						outputHandler(fmt.Sprintf("   ▶️  Strategy %d/%d: %s (%d of %d attempts left)",
+							i+1, len(strategies), strategy.Name(), budget.remaining, maxRecoveryAttempts))
 					}
 
 					// Apply the strategy
@@ -296,7 +355,7 @@ func (e *Executor) Execute(ctx context.Context, cmd *types.Command, outputHandle
 					cmd.Status = types.CommandPending
 
 					// Retry with fixed command
-					retryErr := e.Execute(ctx, cmd, outputHandler)
+					retryErr := e.execute(ctx, cmd, outputHandler, budget)
 					if retryErr == nil {
 						// Success!
 						if outputHandler != nil {

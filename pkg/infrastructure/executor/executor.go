@@ -100,9 +100,54 @@ type OutputHandler func(line string)
 // ErrCommandRejected is returned when a command is rejected in assisted mode
 var ErrCommandRejected = fmt.Errorf("command rejected by user")
 
+// maxRecoveryAttempts caps how many times the AI may be asked to repair a single
+// command - in TOTAL, across the whole recovery, not per attempt-loop.
+const maxRecoveryAttempts = 5
+
+// ErrRecoveryExhausted is returned when auto-fix used its whole attempt budget
+// without producing a command that runs. Callers can distinguish "we gave up
+// after trying" from "the command failed and we never tried".
+var ErrRecoveryExhausted = errors.New("auto-fix recovery exhausted")
+
+// recoveryBudget is the shared, decrementing attempt count for one call to
+// Execute.
+//
+// It exists because the recovery loops retry by calling Execute RECURSIVELY. A
+// counter local to a loop is therefore reset by every recursive call, so the old
+// `maxRetries := 5` bounded each level independently and left the depth
+// unbounded: with an AI that keeps offering plausible-but-still-failing commands
+// - the ordinary failure mode of a model asked to repair a build - recovery did
+// not terminate. Measured before the fix: 23 AutoFixError calls against a
+// documented ceiling of 5 with the fake capped at 12 offers, and no termination
+// at all when it was left uncapped.
+//
+// That was not merely a hang. Every level re-executes commands in the user's
+// project, so an unbounded recursion meant unbounded execution of AI-suggested
+// commands, and unbounded provider spend, against code GLive treats as untrusted.
+//
+// Threading one budget through the recursion makes the ceiling real.
+type recoveryBudget struct {
+	remaining int
+}
+
+// use consumes one attempt, reporting whether one was available.
+func (b *recoveryBudget) use() bool {
+	if b.remaining <= 0 {
+		return false
+	}
+	b.remaining--
+	return true
+}
+
 // Execute runs a command and streams output
 // All long-running operations MUST accept context for cancellation
 func (e *Executor) Execute(ctx context.Context, cmd *Command, outputHandler OutputHandler) error {
+	return e.execute(ctx, cmd, outputHandler, &recoveryBudget{remaining: maxRecoveryAttempts})
+}
+
+// execute is Execute's body, carrying the recovery budget that the recursive
+// retries share. See recoveryBudget.
+func (e *Executor) execute(ctx context.Context, cmd *Command, outputHandler OutputHandler, budget *recoveryBudget) error {
 	// Check for context cancellation before starting
 	select {
 	case <-ctx.Done():
@@ -196,10 +241,12 @@ func (e *Executor) Execute(ctx context.Context, cmd *Command, outputHandler Outp
 
 		// Try to auto-fix command start errors with AI (e.g., command not found)
 		if e.aiClient != nil && e.mode == ModeAuto {
-			maxRetries := 5 // Try up to 5 different recovery strategies
-			for attempt := 1; attempt <= maxRetries; attempt++ {
+			// The budget is shared with every recursive retry below, so the
+			// ceiling holds across the whole recovery rather than per level.
+			for attempt := 1; budget.use(); attempt++ {
 				if outputHandler != nil {
-					outputHandler(fmt.Sprintf("   🔄 Recovery attempt %d/%d (command start failure)...", attempt, maxRetries))
+					outputHandler(fmt.Sprintf("   🔄 Recovery attempt %d (%d of the %d-attempt budget left, command start failure)...",
+						attempt, budget.remaining, maxRecoveryAttempts))
 				}
 
 				fixedCmd, explanation, canFix, aiErr := e.aiClient.AutoFixError(
@@ -241,7 +288,7 @@ func (e *Executor) Execute(ctx context.Context, cmd *Command, outputHandler Outp
 					cmd.Status = CommandPending
 
 					// Recursive retry with fixed command
-					retryErr := e.Execute(ctx, cmd, outputHandler)
+					retryErr := e.execute(ctx, cmd, outputHandler, budget)
 					if retryErr == nil {
 						if outputHandler != nil {
 							outputHandler(fmt.Sprintf("   ✅ Auto-fix successful after %d attempt(s)!", attempt))
@@ -256,7 +303,7 @@ func (e *Executor) Execute(ctx context.Context, cmd *Command, outputHandler Outp
 					}
 				} else {
 					// No more strategies available
-					if outputHandler != nil && attempt < maxRetries {
+					if outputHandler != nil && budget.remaining > 0 {
 						outputHandler(fmt.Sprintf("   ⚠️  No additional recovery strategies available for attempt #%d", attempt))
 					}
 					break
@@ -284,7 +331,8 @@ func (e *Executor) Execute(ctx context.Context, cmd *Command, outputHandler Outp
 				outputHandler("")
 			}
 
-			return fmt.Errorf("failed to start command after %d recovery attempts: %w", maxRetries, err)
+			return fmt.Errorf("failed to start command after %d recovery attempts: %w: %w",
+				maxRecoveryAttempts, ErrRecoveryExhausted, err)
 		}
 
 		return fmt.Errorf("failed to start command: %w", err)
@@ -343,10 +391,12 @@ func (e *Executor) Execute(ctx context.Context, cmd *Command, outputHandler Outp
 		if e.aiClient != nil && e.mode == ModeAuto {
 			e.mu.Unlock() // Unlock before calling AI
 
-			maxRetries := 5 // Try up to 5 different recovery strategies
-			for attempt := 1; attempt <= maxRetries; attempt++ {
+			// The budget is shared with every recursive retry below, so the
+			// ceiling holds across the whole recovery rather than per level.
+			for attempt := 1; budget.use(); attempt++ {
 				if outputHandler != nil {
-					outputHandler(fmt.Sprintf("   🔄 Recovery attempt %d/%d...", attempt, maxRetries))
+					outputHandler(fmt.Sprintf("   🔄 Recovery attempt %d (%d of the %d-attempt budget left)...",
+						attempt, budget.remaining, maxRecoveryAttempts))
 				}
 
 				fixedCmd, explanation, canFix, aiErr := e.aiClient.AutoFixError(
@@ -390,7 +440,7 @@ func (e *Executor) Execute(ctx context.Context, cmd *Command, outputHandler Outp
 					cmd.Status = CommandPending
 
 					// Recursive retry with fixed command
-					retryErr := e.Execute(ctx, cmd, outputHandler)
+					retryErr := e.execute(ctx, cmd, outputHandler, budget)
 					if retryErr == nil {
 						// Fixed successfully!
 						if outputHandler != nil {
@@ -406,7 +456,7 @@ func (e *Executor) Execute(ctx context.Context, cmd *Command, outputHandler Outp
 					}
 				} else {
 					// No more strategies available
-					if outputHandler != nil && attempt < maxRetries {
+					if outputHandler != nil && budget.remaining > 0 {
 						outputHandler(fmt.Sprintf("   ⚠️  No additional recovery strategies available for attempt #%d", attempt))
 					}
 					break
@@ -445,7 +495,8 @@ func (e *Executor) Execute(ctx context.Context, cmd *Command, outputHandler Outp
 				outputHandler("")
 			}
 
-			return fmt.Errorf("command failed with exit code %d after %d recovery attempts", cmd.ExitCode, maxRetries)
+			return fmt.Errorf("command failed with exit code %d after %d recovery attempts: %w",
+				cmd.ExitCode, maxRecoveryAttempts, ErrRecoveryExhausted)
 		}
 
 		e.mu.Unlock()
