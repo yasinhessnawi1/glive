@@ -414,9 +414,6 @@ func (e *Executor) Execute(ctx context.Context, cmd *Command, outputHandler Outp
 			}
 
 			// All recovery attempts failed - provide helpful final message
-			e.mu.Lock()
-			e.mu.Unlock()
-
 			if outputHandler != nil {
 				outputHandler("")
 				outputHandler("   ╔═══════════════════════════════════════════════════════════════╗")

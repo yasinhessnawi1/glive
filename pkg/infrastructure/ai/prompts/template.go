@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 	"text/template"
+	"unicode"
 )
 
 // TemplateEngine provides advanced template rendering capabilities
@@ -85,12 +86,29 @@ func (te *TemplateEngine) renderTemplate(tmpl *PromptTemplate, vars map[string]i
 	return buf.String(), nil
 }
 
+// titleCase upper-cases the first letter of each whitespace-separated word.
+//
+// It replaces strings.Title, which is deprecated because its word-boundary rule
+// mishandles Unicode punctuation. The documented alternative is
+// golang.org/x/text/cases, but this is a cosmetic helper exposed to prompt
+// templates - pulling in a new module for it would not meet the "can this be
+// written in a few lines?" bar in the dependency standards.
+func titleCase(s string) string {
+	words := strings.Fields(s)
+	for i, w := range words {
+		r := []rune(w)
+		r[0] = unicode.ToUpper(r[0])
+		words[i] = string(r)
+	}
+	return strings.Join(words, " ")
+}
+
 // getTemplateFuncs returns helper functions for templates
 func (te *TemplateEngine) getTemplateFuncs() template.FuncMap {
 	return template.FuncMap{
 		"upper":      strings.ToUpper,
 		"lower":      strings.ToLower,
-		"title":      strings.Title,
+		"title":      titleCase,
 		"trim":       strings.TrimSpace,
 		"join":       strings.Join,
 		"contains":   strings.Contains,

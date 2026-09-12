@@ -75,11 +75,12 @@ func (s *WindowsSandbox) Initialize(ctx context.Context, config SandboxConfig) e
 			return fmt.Errorf("failed to create mount point: %w", err)
 		}
 
-		// On Windows, we can create directory junctions for read-only mounts
-		if mount.ReadOnly && mount.Source != "" {
-			// Create junction point (requires admin or developer mode)
-			// For now, just copy structure
-		}
+		// NOTE: read-only mounts are NOT enforced on Windows. The mount point is
+		// created read-write regardless of mount.ReadOnly. Enforcing it would mean
+		// a directory junction (which needs admin or developer mode) or an ACL on
+		// the destination. This was an empty `if mount.ReadOnly && ...` branch,
+		// which read as though the case were handled; it never was. The Mode-B
+		// isolation work owns closing it - see DEFERRED_WORK_AUDIT.
 	}
 
 	s.initialized = true

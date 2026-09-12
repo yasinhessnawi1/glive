@@ -57,11 +57,10 @@ func (w *UIWriter) processLine(line string) {
 	// Route different types of output
 	trimmed := strings.TrimSpace(line)
 
-	// Success messages
+	// Success messages are swallowed: the UI renders its own checkmarks, so
+	// echoing them here would duplicate each one. (The message was being
+	// extracted into a local and then discarded unused.)
 	if strings.HasPrefix(trimmed, "✓") {
-		msg := strings.TrimPrefix(trimmed, "✓")
-		msg = strings.TrimSpace(msg)
-		// Don't duplicate - let UI handle checkmarks
 		return
 	}
 

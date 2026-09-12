@@ -23,7 +23,9 @@ func NewSecureHTTPClient() *http.Client {
 					tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 					tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 				},
-				PreferServerCipherSuites: true,
+				// PreferServerCipherSuites was set here. It has been ignored by
+				// crypto/tls since Go 1.18 - the runtime now picks the suite - so
+				// it advertised a guarantee the code did not have.
 			},
 			ForceAttemptHTTP2: true,
 		},
