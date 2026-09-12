@@ -50,8 +50,64 @@ type ScannerFactory interface {
 	Create(projectPath string) Scanner
 }
 
-// NewContainer creates a new dependency injection container
-func NewContainer(cfg *Config, logger Logger) (*Container, error) {
+// An Option overrides one of the Container's collaborators after the defaults
+// have been wired.
+//
+// The Container is the composition root: it is the one place concrete types are
+// supposed to meet. Until this seam existed it was also a sealed box - every
+// field unexported, one constructor, and that constructor hard-wiring a git
+// client that clones over the network and an AI client that calls a provider.
+// Nothing outside this package could substitute either, so SetupProjectUseCase,
+// which reaches all of its collaborators through the Container, could not be
+// exercised at all without network and AI access.
+//
+// Options are additive and apply last, so NewContainer(cfg, logger) behaves
+// exactly as before and every existing call site compiles unchanged.
+//
+// This is a seam, not the fix. The use case depending on a concrete
+// *Container rather than on consumer-side interfaces still inverts the
+// dependency rule in the standards; GL0 T6 owns that refactor.
+type Option func(*Container)
+
+// WithGitClientFactory substitutes the factory that creates Git clients.
+func WithGitClientFactory(f GitClientFactory) Option {
+	return func(c *Container) { c.gitClientFactory = f }
+}
+
+// WithAIClientFactory substitutes the factory that creates AI clients.
+func WithAIClientFactory(f AIClientFactory) Option {
+	return func(c *Container) { c.aiClientFactory = f }
+}
+
+// WithExecutorFactory substitutes the factory that creates command executors.
+func WithExecutorFactory(f ExecutorFactory) Option {
+	return func(c *Container) { c.executorFactory = f }
+}
+
+// WithAnalyzerFactory substitutes the factory that creates project analyzers.
+func WithAnalyzerFactory(f AnalyzerFactory) Option {
+	return func(c *Container) { c.analyzerFactory = f }
+}
+
+// WithScannerFactory substitutes the factory that creates security scanners.
+func WithScannerFactory(f ScannerFactory) Option {
+	return func(c *Container) { c.scannerFactory = f }
+}
+
+// WithProjectRepository substitutes the project repository.
+//
+// Unlike the five factories this one replaces a collaborator NewContainer builds
+// eagerly, on disk under <WorkspaceDir>/.glive. Supplying it lets a caller keep
+// project state in memory.
+func WithProjectRepository(r repository.ProjectRepository) Option {
+	return func(c *Container) { c.projectRepo = r }
+}
+
+// NewContainer creates a new dependency injection container.
+//
+// With no options it wires the production implementations, exactly as before.
+// Options are applied after those defaults; see Option.
+func NewContainer(cfg *Config, logger Logger, opts ...Option) (*Container, error) {
 	if cfg == nil {
 		return nil, fmt.Errorf("config cannot be nil")
 	}
@@ -84,6 +140,13 @@ func NewContainer(cfg *Config, logger Logger) (*Container, error) {
 	}
 	container.analyzerFactory = &analyzerFactoryImpl{}
 	container.scannerFactory = &scannerFactoryImpl{}
+
+	// Overrides last, so a supplied collaborator always wins over the default.
+	for _, opt := range opts {
+		if opt != nil {
+			opt(container)
+		}
+	}
 
 	return container, nil
 }
