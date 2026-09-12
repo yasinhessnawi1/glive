@@ -22,13 +22,16 @@ env:
 # scanned. Every loop now iterates `go list -m -f '{{.Dir}}'`, so a module added
 # to go.work is picked up by every gate automatically.
 #
-# Why not the simpler `./...` from the repo root: this repo has a vestigial root
-# go.mod (`module github.com/glive`, no Go files) that is NOT in go.work, so the
-# root directory belongs to no workspace module and `go test ./...` there fails
-# with "directory prefix . does not contain modules listed in go.work". Removing
-# that stub would make root-level `./...` work and is worth doing, but it is a
-# separate change from this one. An explicit path still resolves, which is why
-# the build job below can say `go build ./cmd/glive`.
+# Why not the simpler `./...` from the repo root: it does not work here, and not
+# for the reason first assumed. A vestigial root go.mod was suspected and has
+# since been deleted - but `go list ./...` at the root STILL fails with
+# "directory prefix . does not contain modules listed in go.work". In workspace
+# mode the pattern is resolved against the current directory, and the repo root
+# is not itself a module directory: every module lives one or two levels down
+# (cmd/glive, pkg/*, tests). Containing the modules is not the same as being one.
+# An explicit path does resolve, which is why the build job below can say
+# `go build ./cmd/glive`. The generated loop is therefore not a workaround for
+# the stub - it is the only form that covers every module.
 
 jobs:
   lint:
