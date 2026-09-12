@@ -2,7 +2,6 @@ package values
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"unicode"
@@ -115,28 +114,22 @@ func NewSafePath(path string, allowedRoot string) (*SafePath, error) {
 		}
 	}
 
-	// Get absolute path
-	absPath, err := filepath.Abs(path)
+	// Canonicalise BOTH sides the same way before comparing them. Resolving only
+	// the candidate (as this used to) reports /tmp as outside /tmp on macOS, where
+	// /tmp is a symlink, and C:\Users\RUNNER~1\... as outside itself on Windows.
+	// An absolute candidate is never joined under the root: it is accepted only if
+	// it is under the root in canonical form.
+	absPath, err := CanonicalPath(path)
 	if err != nil {
-		return nil, errors.WrapSystem(err, "failed to resolve absolute path")
+		return nil, errors.WrapSystem(err, "failed to resolve path")
 	}
 
-	// Resolve symlinks to prevent symlink attacks
-	realPath, err := resolveSymlinks(absPath)
-	if err != nil && !os.IsNotExist(err) {
-		return nil, errors.WrapSystem(err, "failed to resolve symlinks")
-	}
-	if realPath != "" {
-		absPath = realPath
-	}
-
-	// Ensure path is under allowed root
-	absRoot, err := filepath.Abs(allowedRoot)
+	absRoot, err := CanonicalPath(allowedRoot)
 	if err != nil {
 		return nil, errors.WrapSystem(err, "failed to resolve root path")
 	}
 
-	if !strings.HasPrefix(absPath, absRoot+string(filepath.Separator)) && absPath != absRoot {
+	if !IsWithinRoot(absRoot, absPath) {
 		return nil, errors.NewSecurityError("PATH_TRAVERSAL",
 			fmt.Sprintf("Path %s is outside allowed root %s", path, allowedRoot))
 	}
@@ -165,25 +158,6 @@ func NewSafePath(path string, allowedRoot string) (*SafePath, error) {
 		relative: relPath,
 		root:     absRoot,
 	}, nil
-}
-
-func resolveSymlinks(path string) (string, error) {
-	// Check if path exists
-	info, err := os.Lstat(path)
-	if err != nil {
-		return "", err
-	}
-
-	// If it's a symlink, resolve it
-	if info.Mode()&os.ModeSymlink != 0 {
-		target, err := filepath.EvalSymlinks(path)
-		if err != nil {
-			return "", err
-		}
-		return target, nil
-	}
-
-	return path, nil
 }
 
 // Value returns the string value of the Path

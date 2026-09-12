@@ -136,8 +136,13 @@ func TestSafePath_SymlinkResolution(t *testing.T) {
 	safePath, err := values.NewSafePath(linkPath, tempDir)
 	testutil.AssertNoError(t, err)
 
-	// The absolute path should resolve the symlink
-	if safePath.Absolute() != realDir {
-		t.Errorf("expected symlink to resolve to %q, got %q", realDir, safePath.Absolute())
+	// The absolute path should resolve the symlink - to the real directory in its
+	// canonical spelling. The temp dir itself may be reached through a symlink
+	// (macOS: /var -> /private/var) or an 8.3 short name (Windows: RUNNER~1), so
+	// the expectation is canonicalised the same way.
+	wantDir, err := filepath.EvalSymlinks(realDir)
+	testutil.AssertNoError(t, err)
+	if safePath.Absolute() != wantDir {
+		t.Errorf("expected symlink to resolve to %q, got %q", wantDir, safePath.Absolute())
 	}
 }

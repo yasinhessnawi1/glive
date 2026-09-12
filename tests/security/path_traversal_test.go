@@ -94,29 +94,58 @@ func TestSymlinkAttackPrevention(t *testing.T) {
 	safePath, err := values.NewSafePath(linkPath, tempDir)
 	testutil.AssertNoError(t, err)
 
-	// The resolved path should be the real directory
-	if safePath.Absolute() != realDir {
-		t.Errorf("expected symlink to resolve to %q, got %q", realDir, safePath.Absolute())
+	// The resolved path should be the real directory, in its canonical spelling:
+	// on macOS the temp dir is itself reached through /var -> /private/var, on
+	// Windows through an 8.3 short name, so the expectation is canonicalised too.
+	wantDir, err := filepath.EvalSymlinks(realDir)
+	testutil.AssertNoError(t, err)
+	if safePath.Absolute() != wantDir {
+		t.Errorf("expected symlink to resolve to %q, got %q", wantDir, safePath.Absolute())
 	}
 }
 
-func TestRootBoundaryEnforcement(t *testing.T) {
+// TestSymlinkEscapeIsBlocked is the fail-closed counterpart of
+// TestSymlinkAttackPrevention: a symlink inside the root that points outside it
+// must not admit anything below it, whether or not the leaf exists yet.
+func TestSymlinkEscapeIsBlocked(t *testing.T) {
 	tempDir := testutil.TempDir(t)
-	allowedRoot := filepath.Join(tempDir, "workspace")
-	err := os.MkdirAll(allowedRoot, 0755)
-	testutil.AssertNoError(t, err)
+	root := filepath.Join(tempDir, "root")
+	outside := filepath.Join(tempDir, "outside")
+	testutil.AssertNoError(t, os.MkdirAll(root, 0o755))
+	testutil.AssertNoError(t, os.MkdirAll(outside, 0o755))
+	testutil.AssertNoError(t, os.WriteFile(filepath.Join(outside, "secret.txt"), []byte("x"), 0o600))
 
-	// Paths outside root should be blocked
-	outsidePath := filepath.Join(tempDir, "outside")
-	_, err = values.NewSafePath(outsidePath, allowedRoot)
-	if err == nil {
-		t.Error("expected path outside root to be blocked")
+	escape := filepath.Join(root, "escape")
+	if err := os.Symlink(outside, escape); err != nil {
+		t.Skip("symlinks not supported on this platform")
 	}
 
-	// Paths inside root should be allowed
-	insidePath := filepath.Join(allowedRoot, "inside")
-	_, err = values.NewSafePath(insidePath, allowedRoot)
-	if err != nil {
-		t.Errorf("unexpected error for path inside root: %v", err)
+	for _, path := range []string{
+		escape,
+		filepath.Join(escape, "secret.txt"),
+		filepath.Join(escape, "not-yet-created.txt"),
+	} {
+		t.Run(path, func(t *testing.T) {
+			if _, err := values.NewSafePath(path, root); err == nil {
+				t.Errorf("expected symlink escape to be blocked: %s", path)
+			}
+		})
+	}
+}
+
+// TestSiblingWithSharedPrefixIsOutsideRoot: containment is a path-component
+// check, not a string-prefix check. "/tmp2" is not under "/tmp".
+func TestSiblingWithSharedPrefixIsOutsideRoot(t *testing.T) {
+	tempDir := testutil.TempDir(t)
+	root := filepath.Join(tempDir, "ws")
+	sibling := root + "2"
+	testutil.AssertNoError(t, os.MkdirAll(root, 0o755))
+	testutil.AssertNoError(t, os.MkdirAll(sibling, 0o755))
+
+	if _, err := values.NewSafePath(sibling, root); err == nil {
+		t.Errorf("expected %q to be outside root %q", sibling, root)
+	}
+	if _, err := values.NewSafePath(filepath.Join(sibling, "file.txt"), root); err == nil {
+		t.Errorf("expected a child of %q to be outside root %q", sibling, root)
 	}
 }

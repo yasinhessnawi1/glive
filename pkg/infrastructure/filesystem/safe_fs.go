@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
+
+	"github.com/glive/domain/values"
 )
 
 const (
@@ -33,22 +34,12 @@ func NewSafeFileSystem(allowedRoots ...string) (*SafeFileSystem, error) {
 
 	normalized := make([]string, 0, len(allowedRoots))
 	for _, root := range allowedRoots {
-		abs, err := filepath.Abs(root)
+		// Roots and candidates are canonicalised by the same function so that a
+		// symlinked or 8.3-short-named root compares equal to paths below it.
+		abs, err := values.CanonicalPath(root)
 		if err != nil {
 			return nil, fmt.Errorf("invalid root path %s: %w", root, err)
 		}
-
-		// Resolve any symlinks to prevent symlink attacks
-		real, err := filepath.EvalSymlinks(abs)
-		if err != nil && !os.IsNotExist(err) {
-			return nil, fmt.Errorf("failed to resolve symlinks for %s: %w", abs, err)
-		}
-		if real != "" {
-			abs = real
-		}
-
-		// Normalize path separators
-		abs = filepath.Clean(abs)
 		normalized = append(normalized, abs)
 	}
 
@@ -57,46 +48,19 @@ func NewSafeFileSystem(allowedRoots ...string) (*SafeFileSystem, error) {
 
 // ValidatePath validates that a path is within allowed roots
 func (fs *SafeFileSystem) ValidatePath(path string) error {
-	// Get absolute path
-	abs, err := filepath.Abs(path)
+	// Canonical form: symlinks resolved through the nearest existing ancestor, so
+	// a path that does not exist yet (the state directory before MkdirAll) and the
+	// same path once created are compared in the same spelling as the root.
+	abs, err := values.CanonicalPath(path)
 	if err != nil {
-		return fmt.Errorf("invalid path: %w", err)
+		return fmt.Errorf("failed to resolve path: %w", err)
 	}
 
-	// Clean the path
-	abs = filepath.Clean(abs)
-
-	// Resolve symlinks to prevent symlink attacks
-	real, err := filepath.EvalSymlinks(abs)
-	if err != nil && !os.IsNotExist(err) {
-		// For new files, check parent directory
-		parent := filepath.Dir(abs)
-		real, err = filepath.EvalSymlinks(parent)
-		if err != nil {
-			return fmt.Errorf("failed to resolve path: %w", err)
-		}
-		real = filepath.Join(real, filepath.Base(abs))
-	}
-	if real != "" {
-		abs = real
-	}
-
-	// Normalize path separators
-	abs = filepath.Clean(abs)
-
-	// Check if path is under any allowed root
 	fs.mu.RLock()
 	defer fs.mu.RUnlock()
 
 	for _, root := range fs.allowedRoots {
-		// Check if path is within root
-		rel, err := filepath.Rel(root, abs)
-		if err != nil {
-			continue
-		}
-
-		// If relative path doesn't start with .., it's within the root
-		if !strings.HasPrefix(rel, "..") && rel != ".." {
+		if values.IsWithinRoot(root, abs) {
 			return nil
 		}
 	}
@@ -190,23 +154,14 @@ func (fs *SafeFileSystem) Join(elem ...string) string {
 
 // AddAllowedRoot adds an additional allowed root directory
 func (fs *SafeFileSystem) AddAllowedRoot(root string) error {
-	abs, err := filepath.Abs(root)
+	abs, err := values.CanonicalPath(root)
 	if err != nil {
 		return fmt.Errorf("invalid root path: %w", err)
-	}
-
-	real, err := filepath.EvalSymlinks(abs)
-	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to resolve symlinks: %w", err)
-	}
-	if real != "" {
-		abs = real
 	}
 
 	fs.mu.Lock()
 	defer fs.mu.Unlock()
 
-	abs = filepath.Clean(abs)
 	for _, existing := range fs.allowedRoots {
 		if existing == abs {
 			return nil // Already exists
