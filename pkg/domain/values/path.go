@@ -201,7 +201,14 @@ func (p *SafePath) Relative() string {
 	return p.relative
 }
 
-// Root returns the root directory
+// Root returns the allowed root in canonical form (see CanonicalPath): the same
+// spelling Absolute() and Relative() are expressed in, which is not necessarily
+// the string the caller passed to NewSafePath.
+//
+// Compare like with like. Measuring Absolute() against an un-canonicalised root
+// reports a contained path as an escape wherever the two spellings differ
+// (macOS /var vs /private/var, Windows 8.3 short names, on-disk case). Prefer
+// IsWithinRoot(p.Root(), candidate) over any string-prefix comparison.
 func (p *SafePath) Root() string {
 	return p.root
 }
